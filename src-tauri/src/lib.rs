@@ -1,42 +1,177 @@
-use std::path::PathBuf;
+#![allow(dead_code)]
 
-use serde_json::json;
-use tauri::{Manager, Wry};
-use tauri_plugin_store::{with_store, StoreCollection};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
-// Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
+use askama::Template;
+use derive_more::Display;
+use serde::{Deserialize, Serialize};
+use tauri::{Manager, State, Wry};
+use tauri_plugin_store::{Store, StoreBuilder};
+
+#[derive(Template)]
+#[template(path = "home.html")]
+struct HomeTemplate {}
+
 #[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
+fn home(_state: State<'_, AppState>) -> String {
+    let hello = HomeTemplate {};
+    hello.render().unwrap()
 }
+
+#[derive(Template)]
+#[template(path = "library.html")]
+struct LibraryTemplate<'a> {
+    books: &'a Books,
+}
+
+#[tauri::command]
+fn library(state: State<'_, AppState>) -> String {
+    let state = state.lock().unwrap();
+    let library = LibraryTemplate {
+        books: &state.books,
+    };
+    library.render().unwrap()
+}
+
+#[derive(Template)]
+#[template(path = "settings.html")]
+struct SettingsTemplate<'a> {
+    settings: &'a AppSettings,
+}
+
+#[tauri::command]
+fn settings(state: State<'_, AppState>) -> String {
+    let state = state.lock().unwrap();
+    let settings = SettingsTemplate {
+        settings: &state.settings,
+    };
+    settings.render().unwrap()
+}
+
+#[derive(Serialize, Deserialize, Display)]
+struct AppSettings;
+
+impl AppSettings {
+    const STORE: &'static str = "settings";
+    fn from_store(store: &mut Store<Wry>) -> Self {
+        if let Some(settings) = store.get(Self::STORE) {
+            serde_json::from_value(settings.to_owned()).unwrap() // TODO: handle gracefully
+        } else {
+            let settings = Self;
+            store
+                .insert(
+                    Self::STORE.to_string(),
+                    serde_json::to_value(&settings).unwrap_or_default(),
+                )
+                .ok();
+            store.save().ok();
+
+            settings
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Display, Debug)]
+#[display(fmt = "{:#?}", "self")]
+struct BookIds(Vec<Arc<str>>);
+
+impl BookIds {
+    const STORE: &'static str = "books";
+    fn from_store(store: &mut Store<Wry>) -> Self {
+        if let Some(books) = store.get(Self::STORE) {
+            serde_json::from_value(books.to_owned()).unwrap() // TODO: handle gracefully
+        } else {
+            let books = Self(vec!["a".into(), "b".into(), "c".into()]); // Debug books
+            store
+                .insert(
+                    Self::STORE.to_string(),
+                    serde_json::to_value(&books).unwrap_or_default(),
+                )
+                .ok();
+            store.save().ok();
+
+            books
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Display, Debug)]
+struct Book;
+impl Book {
+    fn from_store(store: &mut Store<Wry>, id: &str) -> Self {
+        if let Some(books) = store.get(id) {
+            serde_json::from_value(books.to_owned()).unwrap() // TODO: handle gracefully
+        } else {
+            let books = Self;
+            store
+                .insert(
+                    id.to_string(),
+                    serde_json::to_value(&books).unwrap_or_default(),
+                )
+                .ok();
+            store.save().ok();
+
+            books
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Display, Debug)]
+#[display(fmt = "{:#?}", "self")]
+struct Books {
+    books: HashMap<Arc<str>, Book>,
+}
+
+impl Books {
+    fn from_store(store: &mut Store<Wry>) -> Self {
+        let book_ids = BookIds::from_store(store);
+
+        let books = book_ids
+            .0
+            .into_iter()
+            .map(|id| {
+                let book = Book::from_store(store, &id);
+                (id, book)
+            })
+            .collect();
+
+        Self { books }
+    }
+}
+
+struct InnerAppState {
+    settings: AppSettings,
+    books: Books,
+    store: Store<Wry>,
+}
+type AppState = Mutex<InnerAppState>;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .invoke_handler(tauri::generate_handler![home, library, settings])
         .setup(|app| {
-            let stores = app.app_handle().state::<StoreCollection<Wry>>();
-            let path = PathBuf::from("store.bin");
+            let mut store = StoreBuilder::new("store.bin").build(app.handle().clone());
+            if true {
+                // reset store
+                store.reset().ok();
+                store.clear().ok();
+                store.save().ok();
+            }
+            store.load().ok();
+            let settings = AppSettings::from_store(&mut store);
+            let books = Books::from_store(&mut store);
 
-            with_store(app.app_handle().clone(), stores, path, |store| {
-                // Note that values must be serde_json::Value instances,
-                // otherwise, they will not be compatible with the JavaScript bindings.
-                store.insert("some-key".to_string(), json!({ "value": 5 }))?;
-
-                // Get a value from the store.
-                let value = store
-                    .get("some-key")
-                    .expect("Failed to get value from store");
-                println!("{}", value); // {"value":5}
-
-                // You can manually save the store after making changes.
-                // Otherwise, it will save upon graceful exit as described above.
-                store.save()?;
-
-                Ok(())
-            })?;
+            app.manage(Mutex::new(InnerAppState {
+                settings,
+                books,
+                store,
+            }));
 
             Ok(())
         })

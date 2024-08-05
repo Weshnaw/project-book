@@ -1,0 +1,31 @@
+<div id="tab-content" role="tabpanel" class="tab-content">
+    Settings: {{ settings }}
+</div>
+
+<div class="tab-list" role="tablist">
+    <button
+        hx-get="command:home"
+        role="tab"
+        aria-selected="false"
+        aria-controls="tab-content"
+    >
+        Home
+    </button>
+    <button
+        hx-get="command:library"
+        role="tab"
+        aria-selected="false"
+        aria-controls="tab-content"
+    >
+        Library
+    </button>
+    <button
+        hx-get="command:settings"
+        class="selected"
+        role="tab"
+        aria-selected="true"
+        aria-controls="tab-content"
+    >
+        Settings
+    </button>
+</div>

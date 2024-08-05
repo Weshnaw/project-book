@@ -1,0 +1,37 @@
+<div id="tab-content" role="tabpanel" class="tab-content">
+    Library: {{ books }}
+    <br />
+    <ul>
+        {% for (book_id, book) in books.books.iter() %}
+        <li>{{ book_id }}</li>
+        {% endfor %}
+    </ul>
+</div>
+
+<div class="tab-list" role="tablist">
+    <button
+        hx-get="command:home"
+        role="tab"
+        aria-selected="false"
+        aria-controls="tab-content"
+    >
+        Home
+    </button>
+    <button
+        hx-get="command:library"
+        class="selected"
+        role="tab"
+        aria-selected="true"
+        aria-controls="tab-content"
+    >
+        Library
+    </button>
+    <button
+        hx-get="command:settings"
+        role="tab"
+        aria-selected="false"
+        aria-controls="tab-content"
+    >
+        Settings
+    </button>
+</div>
