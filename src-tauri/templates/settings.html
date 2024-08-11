@@ -1,5 +1,14 @@
 <div id="tab-content" role="tabpanel" class="tab-content">
     Settings: {{ settings }}
+
+
+    <div
+        id="plex"
+        hx-get="command:plex"
+        hx-trigger="load"
+        hx-target="#plex"
+        hx-swap="innerHTML"
+    ></div
 </div>
 
 <div class="tab-list" role="tablist">
