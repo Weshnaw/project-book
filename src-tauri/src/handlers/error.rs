@@ -1,6 +1,30 @@
-use derive_more::{Display, Error, From};
+use std::sync::PoisonError;
 
-type Result<T> = core::result::Result<T, Error>;
+use derive_more::{Display, Error, From};
+use log::error;
+use serde_json::json;
+use tauri::ipc::InvokeError;
+
+use crate::plex;
+
+pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, From, Error, Display)]
-pub enum Error {}
+pub enum Error {
+    Plex(plex::Error),
+    Template(askama::Error),
+    FailedToLockState,
+}
+
+impl From<Error> for InvokeError {
+    fn from(val: Error) -> Self {
+        error!("Command failed: {:#?}", val);
+        Self(json!(format!("{{\"error\": \"{:?}\"}}", val)))
+    }
+}
+
+impl<T> From<PoisonError<T>> for Error {
+    fn from(_err: PoisonError<T>) -> Self {
+        Self::FailedToLockState
+    }
+}

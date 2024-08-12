@@ -1,3 +1,8 @@
+mod error;
+
+pub use error::*;
+use log::debug;
+
 use std::{env, sync::Arc};
 
 use derive_more::Display;
@@ -36,7 +41,8 @@ impl Default for Plex {
 }
 
 impl Plex {
-    fn create_client(&self) -> reqwest::blocking::Client {
+    fn create_client(&self) -> Result<reqwest::blocking::Client> {
+        debug!("Creating plex client with default headers");
         let mut headers = HeaderMap::new();
         headers.insert("Accept", HeaderValue::from_static("application/json"));
         headers.insert("X-Plex-Provides", HeaderValue::from_static("player"));
@@ -51,7 +57,7 @@ impl Plex {
         );
         headers.insert(
             "X-Plex-Client-Identifier",
-            HeaderValue::from_str(self.client_ident.as_ref()).unwrap(),
+            HeaderValue::from_str(self.client_ident.as_ref())?,
         );
         headers.insert(
             "X-Plex-Version",
@@ -63,7 +69,7 @@ impl Plex {
         );
         headers.insert(
             "X-Plex-Session-Identifier",
-            HeaderValue::from_str(self.session_token.as_ref()).unwrap(),
+            HeaderValue::from_str(self.session_token.as_ref())?,
         );
         // headers.insert("X-Plex-Device",
         //     HeaderValue::from_str(self.device.as_ref()).unwrap(),
@@ -79,23 +85,32 @@ impl Plex {
             );
         }
 
-        reqwest::blocking::Client::builder()
+        Ok(reqwest::blocking::Client::builder()
             .default_headers(headers)
-            .build()
-            .unwrap()
+            .build()?)
     }
 
-    pub(crate) fn create_login_pin(&self) -> PlexPin {
-        let client = self.create_client(); // TODO: shared client in state
+    pub(crate) fn create_login_pin(&self) -> Result<PlexPin> {
+        debug!("Generating login pin");
+        let client = self.create_client()?; // TODO: shared client in state
 
-        PlexPin::new(&client)
+        let pin = PlexPin::new(&client)?;
+
+        debug!("Created pin {:#?}", pin);
+
+        Ok(pin)
     }
 
-    pub(crate) fn check_pin(&mut self, pin: &PlexPin) -> bool {
-        let client = self.create_client(); // TODO: shared client in state
-        let checked_pin = pin.check_pin(&client);
+    pub(crate) fn check_pin(&mut self, pin: &PlexPin) -> Result<()> {
+        debug!("Checking login pin status");
+        let client = self.create_client()?; // TODO: shared client in state
+        let checked_pin = pin.check_pin(&client)?;
         self.user_token = checked_pin.auth_token;
-        self.user_token.is_some()
+        if self.user_token.is_some() {
+            Ok(())
+        } else {
+            Err(Error::WaitingOnPin)
+        }
     }
 
     pub(crate) fn has_user(&self) -> bool {
@@ -107,7 +122,7 @@ impl Plex {
     }
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct PlexPin {
     id: u64,
@@ -116,20 +131,18 @@ pub(crate) struct PlexPin {
 }
 
 impl PlexPin {
-    fn new(client: &reqwest::blocking::Client) -> Self {
+    fn new(client: &reqwest::blocking::Client) -> Result<Self> {
         let pin_url = "https://plex.tv/api/v2/pins";
-        client
-            .post(pin_url)
-            .send()
-            .unwrap()
-            .json::<PlexPin>()
-            .unwrap() // TODO: better error handling
+        Ok(client.post(pin_url).send()?.json::<PlexPin>()?)
     }
 
-    fn check_pin(&self, client: &reqwest::blocking::Client) -> Self {
+    fn check_pin(&self, client: &reqwest::blocking::Client) -> Result<Self> {
         let pin_url = format!("https://plex.tv/api/v2/pins/{}", self.id);
 
-        client.post(pin_url).send().unwrap().json().unwrap() // TODO: better error handling, handle expired pin
+        debug!("Checking pin {:#?}", self);
+        let res = client.get(pin_url).send()?;
+
+        Ok(res.json()?)
     }
 
     pub(crate) fn ref_pin(&self) -> &str {

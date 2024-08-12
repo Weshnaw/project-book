@@ -1,7 +1,13 @@
 use askama::Template;
+use log::{debug, info, warn};
 use tauri::State;
 
-use crate::state::{AppSettings, AppState, Books};
+use crate::{
+    plex,
+    state::{AppSettings, AppState, Books},
+};
+
+use super::Result;
 
 // might move templates to seperate rs file
 #[derive(Template)]
@@ -35,73 +41,90 @@ struct PlexSignedInTemplate;
 struct PlexSignedOutTemplate;
 
 #[tauri::command]
-pub(crate) fn home(_state: State<'_, AppState>) -> String {
+pub(crate) fn home(_state: State<'_, AppState>) -> Result<String> {
+    debug!("Requesting `home`");
     let hello = HomeTemplate {};
-    hello.render().unwrap()
+    Ok(hello.render()?)
 }
 
 #[tauri::command]
-pub(crate) fn library(state: State<'_, AppState>) -> String {
-    let state = state.lock().unwrap();
+pub(crate) fn library(state: State<'_, AppState>) -> Result<String> {
+    debug!("Requesting `library`");
+    let state = state.lock()?;
     let library = LibraryTemplate {
         books: &state.books,
     };
-    library.render().unwrap()
+
+    Ok(library.render()?)
 }
 
 #[tauri::command]
-pub(crate) fn settings(state: State<'_, AppState>) -> String {
-    let state = state.lock().unwrap();
+pub(crate) fn settings(state: State<'_, AppState>) -> Result<String> {
+    debug!("Requesting `settings`");
+    let state = state.lock()?;
     let settings = SettingsTemplate {
         settings: &state.settings,
     };
-    settings.render().unwrap()
+    Ok(settings.render()?)
 }
 
 #[tauri::command]
-pub(crate) fn plex_signin(state: State<'_, AppState>) -> String {
-    let mut state = state.lock().unwrap();
-    let pin = state.settings.plex.create_login_pin();
+pub(crate) fn plex_signin(state: State<'_, AppState>) -> Result<String> {
+    debug!("Requesting `plex_signin`");
+    let mut state = state.lock()?;
+    let pin = state.settings.plex.create_login_pin()?;
     let pin_html = PinTemplate { pin: pin.ref_pin() };
-    let pin_html = pin_html.render().unwrap();
-    state.plex_pin = Some(pin);
-    pin_html
+    let pin_html = pin_html.render()?;
+    state.plex_pin = Some(pin); // todo
+    Ok(pin_html)
 }
 
 #[tauri::command]
-pub(crate) fn plex_check(state: State<'_, AppState>) -> String {
-    let mut state = state.lock().unwrap();
+pub(crate) fn plex_check(state: State<'_, AppState>) -> Result<String> {
+    debug!("Requesting `plex_check`");
+    let mut state = state.lock()?;
     let plex = if let Some(pin) = state.plex_pin.clone() {
-        let success = state.settings.plex.check_pin(&pin);
-        if success {
-            state.save_settings();
-            PlexSignedInTemplate.render()
-        } else {
-            PinTemplate { pin: pin.ref_pin() }.render()
+        match state.settings.plex.check_pin(&pin) {
+            Ok(_) => {
+                info!("Plex signin successful");
+                state.save_settings();
+                PlexSignedInTemplate.render()
+            }
+            Err(plex::Error::WaitingOnPin) => {
+                debug!("Waiting for plex pin complete or retry");
+                PinTemplate { pin: pin.ref_pin() }.render()
+            }
+            Err(_) => {
+                warn!("Plex pin unsuccessful");
+                PlexSignedOutTemplate.render()
+            }
         }
     } else {
+        info!("Plex signin unsuccessful");
         PlexSignedOutTemplate.render()
     };
 
-    plex.unwrap()
+    Ok(plex?)
 }
 
 #[tauri::command]
-pub(crate) fn plex_signout(state: State<'_, AppState>) -> String {
-    let mut state = state.lock().unwrap();
+pub(crate) fn plex_signout(state: State<'_, AppState>) -> Result<String> {
+    debug!("Requesting `plex_signout`");
+    let mut state = state.lock()?;
     state.settings.plex.signout();
     state.save_settings();
 
-    PlexSignedOutTemplate.render().unwrap()
+    Ok(PlexSignedOutTemplate.render()?)
 }
 
 #[tauri::command]
-pub(crate) fn plex(state: State<'_, AppState>) -> String {
-    let state = state.lock().unwrap();
+pub(crate) fn plex(state: State<'_, AppState>) -> Result<String> {
+    debug!("Requesting `plex`");
+    let state = state.lock()?;
     let plex = if state.settings.plex.has_user() {
         PlexSignedInTemplate.render()
     } else {
         PlexSignedOutTemplate.render()
     };
-    plex.unwrap()
+    Ok(plex?)
 }

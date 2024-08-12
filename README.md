@@ -10,17 +10,6 @@ This is a WIP cross platform plex audiobook player
 - scalfold plex signin
 
 ## Upcomming Tasks:
-- **Refactor structure**
-  - template pathes
-    - plex related ones should probably be in their own folder
-    - folder per main page like settings, library
-  - refactor rust lib structure
-    - plex module
-    - pull out tauri commands
-    - state module
-- Better error handling
-- Real Plex calls
-  - Maybe a scalfolding to allow for mock functionality (only on `#[cfg(debug_assertions)]` see [example](https://stackoverflow.com/questions/39204908/how-to-check-release-debug-builds-using-cfg-in-rust))
 
 ## Future Tasks:
 - load library
@@ -46,6 +35,8 @@ This is a WIP cross platform plex audiobook player
 - update plex with read status / progress
 - in app logging view / logging files
 - async reqwest
+- Maybe a scalfolding to allow for mock functionality (only on `#[cfg(debug_assertions)]` see [example](https://stackoverflow.com/questions/39204908/how-to-check-release-debug-builds-using-cfg-in-rust))
+
 
 ## Recommended IDE Setup for Tauri
 
