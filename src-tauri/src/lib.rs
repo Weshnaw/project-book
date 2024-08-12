@@ -14,6 +14,7 @@ pub fn run() {
             home,
             library,
             settings,
+            settings_state,
             plex_signin,
             plex_check,
             plex_signout,

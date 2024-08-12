@@ -1,14 +1,13 @@
 <div id="tab-content" role="tabpanel" class="tab-content">
-    Settings: {{ settings }}
-
-
     <div
-        id="plex"
-        hx-get="command:plex"
-        hx-trigger="load"
-        hx-target="#plex"
+        id="settings-state"
+        hx-get="command:settings_state"
+        hx-trigger="load, every 1s"
+        hx-target="#settings-state"
         hx-swap="innerHTML"
-    ></div
+    >
+        Loading settings
+    </div>
 </div>
 
 <div class="tab-list" role="tablist">

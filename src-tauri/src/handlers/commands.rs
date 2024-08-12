@@ -2,28 +2,63 @@ use askama::Template;
 use log::{debug, info, warn};
 use tauri::State;
 
-use crate::{
-    plex,
-    state::{AppSettings, AppState, Books},
-};
+use crate::state::{AppSettings, AppState, Books};
 
 use super::Result;
 
 // might move templates to seperate rs file
 #[derive(Template)]
 #[template(path = "home.html")]
-struct HomeTemplate {}
+struct HomeTemplate;
 
-#[derive(Template)]
-#[template(path = "settings.html")]
-struct SettingsTemplate<'a> {
-    settings: &'a AppSettings,
+#[tauri::command]
+pub(crate) fn home(_state: State<'_, AppState>) -> Result<String> {
+    debug!("Requesting `home`");
+    let hello = HomeTemplate {};
+    Ok(hello.render()?)
 }
 
 #[derive(Template)]
 #[template(path = "library.html")]
 struct LibraryTemplate<'a> {
     books: &'a Books,
+}
+
+#[tauri::command]
+pub(crate) fn library(state: State<'_, AppState>) -> Result<String> {
+    debug!("Requesting `library`");
+    let state = state.lock()?;
+    let library = LibraryTemplate {
+        books: &state.books,
+    };
+
+    Ok(library.render()?)
+}
+
+#[derive(Template)]
+#[template(path = "settings.html")]
+struct SettingsTemplate;
+
+#[tauri::command]
+pub(crate) fn settings() -> Result<String> {
+    debug!("Requesting `settings`");
+    Ok(SettingsTemplate.render()?)
+}
+
+#[derive(Template)]
+#[template(path = "settings/state.html")]
+struct SettingsStateTemplate<'a> {
+    settings: &'a AppSettings,
+}
+
+#[tauri::command]
+pub(crate) fn settings_state(state: State<'_, AppState>) -> Result<String> {
+    debug!("Requesting `settings_state`");
+    let state = state.lock()?;
+    let state = SettingsStateTemplate {
+        settings: &state.settings,
+    };
+    Ok(state.render()?)
 }
 
 #[derive(Template)]
@@ -39,34 +74,6 @@ struct PlexSignedInTemplate;
 #[derive(Template)]
 #[template(path = "settings/plexSignedOut.html")]
 struct PlexSignedOutTemplate;
-
-#[tauri::command]
-pub(crate) fn home(_state: State<'_, AppState>) -> Result<String> {
-    debug!("Requesting `home`");
-    let hello = HomeTemplate {};
-    Ok(hello.render()?)
-}
-
-#[tauri::command]
-pub(crate) fn library(state: State<'_, AppState>) -> Result<String> {
-    debug!("Requesting `library`");
-    let state = state.lock()?;
-    let library = LibraryTemplate {
-        books: &state.books,
-    };
-
-    Ok(library.render()?)
-}
-
-#[tauri::command]
-pub(crate) fn settings(state: State<'_, AppState>) -> Result<String> {
-    debug!("Requesting `settings`");
-    let state = state.lock()?;
-    let settings = SettingsTemplate {
-        settings: &state.settings,
-    };
-    Ok(settings.render()?)
-}
 
 #[tauri::command]
 pub(crate) fn plex_signin(state: State<'_, AppState>) -> Result<String> {
@@ -90,12 +97,13 @@ pub(crate) fn plex_check(state: State<'_, AppState>) -> Result<String> {
                 state.save_settings();
                 PlexSignedInTemplate.render()
             }
-            Err(plex::Error::WaitingOnPin) => {
+            Err(crate::plex::Error::WaitingOnPin) => {
                 debug!("Waiting for plex pin complete or retry");
                 PinTemplate { pin: pin.ref_pin() }.render()
             }
             Err(_) => {
                 warn!("Plex pin unsuccessful");
+                state.plex_pin = None;
                 PlexSignedOutTemplate.render()
             }
         }
@@ -123,6 +131,8 @@ pub(crate) fn plex(state: State<'_, AppState>) -> Result<String> {
     let state = state.lock()?;
     let plex = if state.settings.plex.has_user() {
         PlexSignedInTemplate.render()
+    } else if let Some(pin) = state.plex_pin.clone() {
+        PinTemplate { pin: pin.ref_pin() }.render()
     } else {
         PlexSignedOutTemplate.render()
     };
