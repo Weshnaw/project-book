@@ -8,13 +8,14 @@ This is a WIP cross platform plex audiobook player
 - state management
 - scalfold displaying books
 - scalfold plex signin
+- plex sign ingi
 
 ## Upcomming Tasks:
-
-## Future Tasks:
 - load library
 - download books
 - stream audio
+
+## Future Tasks:
 - handle chapters
 - handle book metadata
 - playback speed
@@ -36,7 +37,9 @@ This is a WIP cross platform plex audiobook player
 - in app logging view / logging files
 - async reqwest
 - Maybe a scalfolding to allow for mock functionality (only on `#[cfg(debug_assertions)]` see [example](https://stackoverflow.com/questions/39204908/how-to-check-release-debug-builds-using-cfg-in-rust))
-
+- refreshing when data changes
+  - such as when plex pin signin is complete, update settings data
+    - same for signout
 
 ## Recommended IDE Setup for Tauri
 
