@@ -1,9 +1,12 @@
 use std::{collections::HashMap, sync::Arc};
 
 use derive_more::Display;
+use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 use tauri::Wry;
 use tauri_plugin_store::Store;
+
+use super::Error;
 
 #[derive(Serialize, Deserialize, Display, Debug)]
 #[display(fmt = "{:#?}", "self")]
@@ -33,19 +36,27 @@ pub(crate) struct Book;
 
 impl Book {
     pub(super) fn from_store(store: &mut Store<Wry>, id: &str) -> Self {
-        if let Some(books) = store.get(id) {
-            serde_json::from_value(books.to_owned()).unwrap() // TODO: handle gracefully
+        debug!("Loading {} store", id);
+        let book = if let Some(book) = store.get(id) {
+            serde_json::from_value(book.to_owned()).map_err(|err| err.into())
         } else {
-            let books = Self;
+            Err(Error::StoreEmpty)
+        };
+
+        if let Ok(book) = book {
+            book
+        } else {
+            warn!("Failed to find store for: {}", id);
+            let book = Self;
             store
                 .insert(
                     id.to_string(),
-                    serde_json::to_value(&books).unwrap_or_default(),
+                    serde_json::to_value(&book).unwrap_or_default(),
                 )
                 .ok();
             store.save().ok();
 
-            books
+            book
         }
     }
 }
@@ -57,10 +68,18 @@ struct BookIds(Vec<Arc<str>>);
 impl BookIds {
     const STORE: &'static str = "books";
     pub(super) fn from_store(store: &mut Store<Wry>) -> Self {
-        if let Some(books) = store.get(Self::STORE) {
-            serde_json::from_value(books.to_owned()).unwrap() // TODO: handle gracefully
+        debug!("Loading {} store", Self::STORE);
+        let books = if let Some(books) = store.get(Self::STORE) {
+            serde_json::from_value(books.to_owned()).map_err(|err| err.into())
         } else {
-            let books = Self(vec!["a".into(), "b".into(), "c".into()]); // Debug books
+            Err(Error::StoreEmpty)
+        };
+
+        if let Ok(books) = books {
+            books
+        } else {
+            warn!("Failed to find store for: {}", Self::STORE);
+            let books = Self(vec![]);
             store
                 .insert(
                     Self::STORE.to_string(),
@@ -68,7 +87,6 @@ impl BookIds {
                 )
                 .ok();
             store.save().ok();
-
             books
         }
     }

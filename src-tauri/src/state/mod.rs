@@ -1,5 +1,8 @@
 mod books;
+mod error;
 mod settings;
+
+pub use error::*;
 
 pub(crate) use books::*;
 pub(crate) use settings::*;

@@ -72,17 +72,14 @@ impl Plex {
             HeaderValue::from_str(self.session_token.as_ref())?,
         );
         // headers.insert("X-Plex-Device",
-        //     HeaderValue::from_str(self.device.as_ref()).unwrap(),
+        //     HeaderValue::from_str(self.device.as_ref())?,
 
         // );
         // headers.insert("X-Plex-Device-Name",
-        //     HeaderValue::from_str(self.device_name.as_ref()).unwrap(),
+        //     HeaderValue::from_str(self.device_name.as_ref())?,
         // );
         if let Some(token) = &self.user_token {
-            headers.insert(
-                "X-Plex-Token",
-                HeaderValue::from_str(token.as_ref()).unwrap(),
-            );
+            headers.insert("X-Plex-Token", HeaderValue::from_str(token.as_ref())?);
         }
 
         Ok(reqwest::blocking::Client::builder()

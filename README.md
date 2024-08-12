@@ -40,6 +40,8 @@ This is a WIP cross platform plex audiobook player
 - Maybe a scalfolding to allow for mock functionality (only on `#[cfg(debug_assertions)]` see [example](https://stackoverflow.com/questions/39204908/how-to-check-release-debug-builds-using-cfg-in-rust))
 - better refreshing when data changes
   - we should emit events instead of polling [tauri events?](https://v2.tauri.app/develop/calling-frontend/#event-system)
+- macro/trait store functions
+- is it fine to ignore save errors? (ie `store.save().ok();`)
 
 ## Recommended IDE Setup for Tauri
 
