@@ -1,0 +1,11 @@
+<div
+    hx-get="command:plex_check"
+    hx-trigger="every 1s"
+    hx-target="this"
+    hx-swap="outerHTML"
+>
+    use the following pin at
+    <a href="https://www.plex.tv/link/ ">https://www.plex.tv/link/</a>
+    <br />
+    <span class="pin">{{ pin }}</span>
+</div>
