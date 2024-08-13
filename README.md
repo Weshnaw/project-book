@@ -29,7 +29,7 @@ This is a WIP cross platform plex audiobook player
 - get device info
 - better debugging
 - better logging
-- _cloud_ syncing
+- _"cloud"_ syncing
   - self hosted syncing?
 - recently added
 - recently listened
@@ -42,6 +42,8 @@ This is a WIP cross platform plex audiobook player
   - we should emit events instead of polling [tauri events?](https://v2.tauri.app/develop/calling-frontend/#event-system)
 - macro/trait store functions
 - is it fine to ignore save errors? (ie `store.save().ok();`)
+- Shared client for plex
+  - Custom deserializer?
 
 ## Recommended IDE Setup for Tauri
 

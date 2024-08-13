@@ -1,7 +1,7 @@
 mod error;
 
 pub use error::*;
-use log::debug;
+use log::{debug, trace};
 
 use std::{env, sync::Arc};
 
@@ -22,13 +22,17 @@ pub(crate) struct Plex {
     // #[serde(skip_serializing)]
     // client: reqwest::Client,
     // TODO: figure out device info
+    // #[serde(skip_serializing)]
     //device: Arc<str>,
+    // #[serde(skip_serializing)]
     //device_name: Arc<str>,
 }
 
 fn default_session() -> Arc<str> {
     Uuid::new_v4().to_string().into()
 }
+
+// TODO: Custom Deserializer for plex
 
 impl Default for Plex {
     fn default() -> Self {
@@ -136,7 +140,7 @@ impl PlexPin {
     fn check_pin(&self, client: &reqwest::blocking::Client) -> Result<Self> {
         let pin_url = format!("https://plex.tv/api/v2/pins/{}", self.id);
 
-        debug!("Checking pin {:#?}", self);
+        trace!("Checking pin {:#?}", self);
         let res = client.get(pin_url).send()?;
 
         Ok(res.json()?)
