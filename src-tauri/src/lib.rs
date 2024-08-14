@@ -19,7 +19,8 @@ pub fn run() {
             plex_check,
             plex_signout,
             plex,
-            plex_server
+            plex_server,
+            plex_update_server
         ])
         .setup(state::setup_state)
         .run(tauri::generate_context!())

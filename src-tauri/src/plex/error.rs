@@ -8,4 +8,8 @@ pub enum Error {
     RequestFailed(reqwest::Error),
     WaitingOnPin,
     NoServerSelected,
+    InvalidSeverName,
+    NotAuthenticated,
+    NoResourcesFound,
+    NoValidConnections,
 }

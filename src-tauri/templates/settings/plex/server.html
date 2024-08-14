@@ -1,9 +1,10 @@
-<input
-    class="form-control"
-    type="server"
-    name="server"
-    placeholder="Plex Sever URL..."
-    hx-post="command:plex_server"
-    hx-trigger="input changed delay:500ms, server"
-    hx-indicator=".htmx-indicator"
-/>
+<select id="server-input">
+    {% if selected.is_none() %}
+        <option value="" selected disabled hidden>Choose Server...</option>
+    {% endif %}
+    {% for url in urls.iter() %}
+    <option value="{{ url }}"
+        {% if selected.clone().unwrap_or("".into()) == url.clone() %} selected {% endif %}> {{ url }}</option>
+    {% endfor %}
+</select>
+<button onclick="updateServer()">Update</button>

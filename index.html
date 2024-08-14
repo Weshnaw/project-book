@@ -18,5 +18,14 @@
                 hx-swap="innerHTML"
             ></div>
         </div>
+        <script>
+            function updateServer() {
+                const updateServer = new CustomEvent("update-server", {
+                    bubbles: true,
+                    cancelable: true,
+                });
+                document.dispatchEvent(updateServer);
+            }
+        </script>
     </body>
 </html>

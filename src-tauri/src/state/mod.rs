@@ -34,8 +34,10 @@ pub(crate) fn setup_state(app: &mut App) -> core::result::Result<(), Box<dyn std
     let mut store = StoreBuilder::new("store.bin").build(app.handle().clone());
 
     store.load().ok();
-    let settings = AppSettings::from_store(&mut store);
+    let mut settings = AppSettings::from_store(&mut store);
     let books = Books::from_store(&mut store);
+
+    settings.plex.refresh_resources().ok(); // Im 50/50 on refreshing at startup
 
     app.manage(Mutex::new(InnerAppState {
         settings,

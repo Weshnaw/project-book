@@ -27,6 +27,7 @@ const patchedSend = async function (this: any, params: any) {
 };
 
 window.addEventListener("DOMContentLoaded", () => {
+  debug(`DOMContentLoaded`);
   document.body.addEventListener("htmx:beforeSend", (event: any) => {
     const path = event.detail.requestConfig.path;
     if (path.startsWith(COMMAND_PREFIX)) {
@@ -40,4 +41,13 @@ window.addEventListener("DOMContentLoaded", () => {
 listen("update-settings", (_) => {
   debug(`update-settings event`);
   htmx.trigger(htmx.find("body")!, "update-settings", null);
+});
+
+document.addEventListener("update-server", async () => {
+  debug("update-server event triggered");
+  let serverInputEl: HTMLInputElement =
+    document.querySelector("#server-input")!;
+  await invoke("plex_update_server", {
+    server: serverInputEl.value,
+  });
 });
