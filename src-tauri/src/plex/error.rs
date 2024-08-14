@@ -7,4 +7,5 @@ pub enum Error {
     InvalidHeader(reqwest::header::InvalidHeaderValue),
     RequestFailed(reqwest::Error),
     WaitingOnPin,
+    NoServerSelected,
 }

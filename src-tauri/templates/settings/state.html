@@ -1,5 +1,15 @@
 Settings: {{ settings }}
 <div
+    id="plex-server"
+    hx-get="command:plex_server"
+    hx-trigger="load"
+    hx-target="#plex-server"
+    hx-swap="innerHTML"
+    hx-preserve
+>
+    Loading plex server
+</div>
+<div
     id="plex"
     hx-get="command:plex"
     hx-trigger="load"
@@ -7,5 +17,5 @@ Settings: {{ settings }}
     hx-swap="innerHTML"
     hx-preserve
 >
-    Loading plex details
+    Loading plex login
 </div>

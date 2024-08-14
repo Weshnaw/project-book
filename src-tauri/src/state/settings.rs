@@ -27,6 +27,7 @@ impl AppSettings {
             settings
         } else {
             warn!("Failed to find store for: {}", Self::STORE);
+            store.delete(Self::STORE).ok();
             let settings = Self::default();
             store
                 .insert(
@@ -41,6 +42,7 @@ impl AppSettings {
 
     pub(super) fn save(&self, store: &mut Store<Wry>) {
         debug!("Saving to {} store", Self::STORE);
+        store.delete(Self::STORE).ok();
         store
             .insert(
                 Self::STORE.to_string(),

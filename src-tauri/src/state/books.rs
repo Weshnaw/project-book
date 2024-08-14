@@ -47,6 +47,7 @@ impl Book {
             book
         } else {
             warn!("Failed to find store for: {}", id);
+            store.delete(id).ok();
             let book = Self;
             store
                 .insert(
@@ -79,6 +80,7 @@ impl BookIds {
             books
         } else {
             warn!("Failed to find store for: {}", Self::STORE);
+            store.delete(Self::STORE).ok();
             let books = Self(vec![]);
             store
                 .insert(

@@ -15,6 +15,8 @@ use uuid::Uuid;
 pub(crate) struct Plex {
     client_ident: Arc<str>,
     user_token: Option<Arc<str>>,
+    server: Option<Arc<str>>,
+    library: Option<Arc<str>>,
     #[serde(skip_serializing)]
     #[serde(default = "default_session")]
     session_token: Arc<str>,
@@ -39,6 +41,8 @@ impl Default for Plex {
         Self {
             client_ident: Uuid::new_v4().to_string().into(), // I could probably just pass along the uuid itself
             user_token: None,
+            server: None,
+            library: None,
             session_token: default_session(),
         }
     }
@@ -119,7 +123,25 @@ impl Plex {
     }
 
     pub(crate) fn signout(&mut self) {
+        debug!("Removing plex");
+        // Is there a plex call to deauth a token?
         self.user_token = None
+    }
+
+    pub(crate) fn get_server(&self) -> Result<&str> {
+        if let Some(server) = &self.server {
+            Ok(server.as_ref())
+        } else {
+            Err(Error::NoServerSelected)
+        }
+    }
+
+    pub(crate) fn list_libraries(&self) -> Result<()> {
+        if let Some(_server) = &self.server {
+            todo!()
+        } else {
+            Err(Error::NoServerSelected)
+        }
     }
 }
 

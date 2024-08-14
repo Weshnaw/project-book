@@ -1,6 +1,6 @@
 use askama::Template;
 use log::{debug, info, warn};
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 
 use crate::state::{AppSettings, AppState, Books};
 
@@ -35,6 +35,8 @@ pub(crate) fn library(state: State<'_, AppState>) -> Result<String> {
     Ok(library.render()?)
 }
 
+const UPDATE_SETTINGS_EVENT: &str = "update-settings";
+
 #[derive(Template)]
 #[template(path = "settings.html")]
 struct SettingsTemplate;
@@ -62,17 +64,17 @@ pub(crate) fn settings_state(state: State<'_, AppState>) -> Result<String> {
 }
 
 #[derive(Template)]
-#[template(path = "settings/pin.html")]
+#[template(path = "settings/plex/pin.html")]
 struct PinTemplate<'a> {
     pin: &'a str,
 }
 
 #[derive(Template)]
-#[template(path = "settings/plexSignedIn.html")]
+#[template(path = "settings/plex/signed_in.html")]
 struct PlexSignedInTemplate;
 
 #[derive(Template)]
-#[template(path = "settings/plexSignedOut.html")]
+#[template(path = "settings/plex/signed_out.html")]
 struct PlexSignedOutTemplate;
 
 #[tauri::command]
@@ -87,7 +89,7 @@ pub(crate) fn plex_signin(state: State<'_, AppState>) -> Result<String> {
 }
 
 #[tauri::command]
-pub(crate) fn plex_check(state: State<'_, AppState>) -> Result<String> {
+pub(crate) fn plex_check(state: State<'_, AppState>, app: AppHandle) -> Result<String> {
     debug!("Requesting `plex_check`");
     let mut state = state.lock()?;
     let plex = if let Some(pin) = state.plex_pin.clone() {
@@ -95,6 +97,7 @@ pub(crate) fn plex_check(state: State<'_, AppState>) -> Result<String> {
             Ok(_) => {
                 info!("Plex signin successful");
                 state.save_settings();
+                app.emit(UPDATE_SETTINGS_EVENT, ()).ok(); // move this to state/settings struct?
                 PlexSignedInTemplate.render()
             }
             Err(crate::plex::Error::WaitingOnPin) => {
@@ -116,11 +119,12 @@ pub(crate) fn plex_check(state: State<'_, AppState>) -> Result<String> {
 }
 
 #[tauri::command]
-pub(crate) fn plex_signout(state: State<'_, AppState>) -> Result<String> {
+pub(crate) fn plex_signout(state: State<'_, AppState>, app: AppHandle) -> Result<String> {
     debug!("Requesting `plex_signout`");
     let mut state = state.lock()?;
     state.settings.plex.signout();
-    state.save_settings();
+    //state.save_settings();
+    app.emit(UPDATE_SETTINGS_EVENT, ()).ok(); // move this to state/settings struct?
 
     Ok(PlexSignedOutTemplate.render()?)
 }
@@ -137,4 +141,19 @@ pub(crate) fn plex(state: State<'_, AppState>) -> Result<String> {
         PlexSignedOutTemplate.render()
     };
     Ok(plex?)
+}
+
+#[derive(Template)]
+#[template(path = "settings/plex/server.html")]
+struct PlexServerTemplate;
+
+#[tauri::command]
+pub(crate) fn plex_server(state: State<'_, AppState>) -> Result<String> {
+    debug!("Requesting `plex_server`");
+    let mut state = state.lock()?;
+
+    state.save_settings();
+
+    let server = state.settings.plex.get_server();
+    Ok(PlexServerTemplate.render()?)
 }

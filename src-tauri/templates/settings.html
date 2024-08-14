@@ -2,7 +2,7 @@
     <div
         id="settings-state"
         hx-get="command:settings_state"
-        hx-trigger="load, every 1s"
+        hx-trigger="load, update-settings from:body"
         hx-target="#settings-state"
         hx-swap="innerHTML"
     >

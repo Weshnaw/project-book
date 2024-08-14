@@ -1,6 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { debug } from "@tauri-apps/plugin-log";
 
-import "htmx.org";
+import htmx from "htmx.org";
 
 /* HTMX plugin */
 const COMMAND_PREFIX = "command:";
@@ -14,6 +16,7 @@ const patchedSend = async function (this: any, params: any) {
 
   // Set response
   const query = new URLSearchParams(params);
+  debug(`HTMX tauri invoke ${this.command} with ${JSON.stringify(query)}`);
   this.response = await invoke(this.command, Object.fromEntries(query));
   this.readyState = XMLHttpRequest.DONE;
   this.status = 200;
@@ -33,3 +36,8 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 });
 /* END HTMX pluigin */
+
+listen("update-settings", (_) => {
+  debug(`update-settings event`);
+  htmx.trigger(htmx.find("body")!, "update-settings", null);
+});
