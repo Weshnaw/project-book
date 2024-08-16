@@ -2,6 +2,7 @@ mod error;
 
 pub use error::*;
 use log::{debug, trace, warn};
+use serde_json::Value;
 
 use std::{env, sync::Arc, time::Duration};
 
@@ -19,13 +20,22 @@ struct PlexServer {
 
 #[derive(Serialize, Deserialize, Display, Debug)]
 #[display(fmt = "{:#?}", "self")]
+struct PlexLibrary {
+    name: Arc<str>,
+    key: Arc<str>,
+}
+
+#[derive(Serialize, Deserialize, Display, Debug)]
+#[display(fmt = "{:#?}", "self")]
 pub(crate) struct Plex {
     client_ident: Arc<str>,
     user_token: Option<Arc<str>>,
     selected_server: Option<PlexServer>,
-    library: Option<Arc<str>>,
+    selected_library: Option<PlexLibrary>,
     #[serde(skip_serializing)] // Im 50/50 on refreshing at startup
     resources: Option<Arc<[PlexResource]>>, // TODO might be better as hashmap
+    #[serde(skip_serializing)] // Im 50/50 on refreshing at startup
+    libraries: Option<Arc<[Library]>>, // TODO might be better as hashmap
     #[serde(skip_serializing)]
     #[serde(default = "default_session")]
     session_token: Arc<str>,
@@ -51,7 +61,8 @@ impl Default for Plex {
             client_ident: Uuid::new_v4().to_string().into(), // I could probably just pass along the uuid itself
             user_token: None,
             selected_server: None,
-            library: None,
+            selected_library: None,
+            libraries: None,
             resources: None,
             session_token: default_session(),
         }
@@ -123,7 +134,7 @@ impl Plex {
         let checked_pin = pin.check_pin(&client)?;
         self.user_token = checked_pin.auth_token;
         if self.user_token.is_some() {
-            self.refresh_resources()?;
+            self.refresh_all_unchecked();
             Ok(())
         } else {
             Err(Error::WaitingOnPin)
@@ -137,7 +148,15 @@ impl Plex {
     pub(crate) fn signout(&mut self) {
         debug!("Removing plex");
         // Is there a plex call to deauth a token?
-        self.user_token = None
+        self.user_token = None;
+        self.selected_server = None;
+        self.selected_library = None;
+    }
+
+    pub(crate) fn refresh_all_unchecked(&mut self) {
+        debug!("refreshing all plex data");
+        self.refresh_resources().ok();
+        self.refresh_libraries().ok();
     }
 
     pub(crate) fn refresh_resources(&mut self) -> Result<()> {
@@ -147,6 +166,21 @@ impl Plex {
             let resources = PlexResource::list(&client)?;
             self.resources = Some(resources);
             Ok(())
+        } else {
+            Err(Error::NotAuthenticated)
+        }
+    }
+
+    pub(crate) fn refresh_libraries(&mut self) -> Result<()> {
+        debug!("refreshing libraries");
+        if self.has_user() {
+            if let Some(server) = &self.selected_server {
+                let client = self.create_client()?; // TODO: shared client in state
+                self.libraries = Some(Library::list(&client, server.uri.as_ref())?);
+                Ok(())
+            } else {
+                Err(Error::NoServerSelected)
+            }
         } else {
             Err(Error::NotAuthenticated)
         }
@@ -194,15 +228,59 @@ impl Plex {
         Ok(())
     }
 
-    pub(crate) fn get_selected(&self) -> Option<Arc<str>> {
+    pub(crate) fn get_selected_server(&self) -> Option<Arc<str>> {
         self.selected_server
             .as_ref()
             .map(|server| server.name.clone())
     }
 
     pub(crate) fn reset_server_selection(&mut self) {
-        debug!("resetign selected resource");
+        debug!("reseting selected resource");
         self.selected_server = None;
+    }
+
+    pub(crate) fn get_libraries(&self) -> Result<Arc<[Arc<str>]>> {
+        if let Some(libraries) = &self.libraries {
+            debug!("get loaded libraries");
+
+            Ok(libraries.iter().map(|lib| lib.title.clone()).collect()) // maybe filter by music category
+        } else {
+            Err(Error::NoLibrariesFound)
+        }
+    }
+
+    pub(crate) fn select_library(&mut self, server: &str) -> Result<()> {
+        debug!("selecting library");
+        let libraries = if let Some(libraries) = &self.libraries {
+            libraries
+        } else {
+            warn!("No library found when selecting servers");
+            return Err(Error::NoLibrariesFound);
+        };
+
+        let library = libraries
+            .iter()
+            .find(|res| res.title == server.into())
+            .ok_or(Error::InvalidLibraryName)
+            .map(|lib| PlexLibrary {
+                key: lib.key.clone(),
+                name: lib.title.clone(),
+            })?;
+
+        self.selected_library = Some(library);
+
+        Ok(())
+    }
+
+    pub(crate) fn get_selected_library(&self) -> Option<Arc<str>> {
+        self.selected_library
+            .as_ref()
+            .map(|library| library.name.clone())
+    }
+
+    pub(crate) fn reset_library_selection(&mut self) {
+        debug!("reseting selected library");
+        self.selected_library = None;
     }
 }
 
@@ -217,7 +295,7 @@ pub(crate) struct PlexPin {
 impl PlexPin {
     fn new(client: &reqwest::blocking::Client) -> Result<Self> {
         let pin_url = "https://plex.tv/api/v2/pins";
-        Ok(client.post(pin_url).send()?.json::<Self>()?)
+        Ok(client.post(pin_url).send()?.json()?)
     }
 
     fn check_pin(&self, client: &reqwest::blocking::Client) -> Result<Self> {
@@ -250,7 +328,7 @@ struct PlexResource {
 impl PlexResource {
     fn list(client: &reqwest::blocking::Client) -> Result<Arc<[Self]>> {
         let url = "https://plex.tv/api/v2/resources";
-        Ok(client.get(url).send()?.json::<Arc<[Self]>>()?)
+        Ok(client.get(url).send()?.json()?)
     }
 
     fn get_first_working_connection(
@@ -258,8 +336,34 @@ impl PlexResource {
         client: &reqwest::blocking::Client,
     ) -> Result<&PlexConnections> {
         self.connections
-            .into_iter()
+            .iter()
             .find(|conn| client.get(conn.uri.as_ref()).send().is_ok())
             .ok_or(Error::NoValidConnections)
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct Library {
+    title: Arc<str>,
+    key: Arc<str>,
+    #[serde(rename = "type")]
+    media_type: Arc<str>, // could be enum
+}
+
+impl Library {
+    fn list(client: &reqwest::blocking::Client, uri: &str) -> Result<Arc<[Self]>> {
+        let url = format!("{uri}/library/sections/");
+        Ok(serde_json::from_value(
+            client
+                .get(url)
+                .send()?
+                .json::<Value>()?
+                .get("MediaContainer")
+                .ok_or(Error::MediaContainerNotFound)?
+                .get("Directory")
+                .ok_or(Error::LibraryDirectoryNotFound)?
+                .to_owned(),
+        )?)
     }
 }

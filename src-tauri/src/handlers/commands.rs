@@ -160,7 +160,7 @@ pub(crate) fn plex_server(state: State<'_, AppState>) -> Result<String> {
     let servers = state.settings.plex.get_servers().unwrap_or([].into());
     Ok(PlexServerTemplate {
         urls: servers,
-        selected: state.settings.plex.get_selected(),
+        selected: state.settings.plex.get_selected_server(),
     }
     .render()?)
 }
@@ -171,13 +171,53 @@ pub(crate) fn plex_update_server(
     server: Option<&str>,
     app: AppHandle,
 ) -> Result<()> {
-    debug!("Requesting `plex_server`");
+    debug!("Requesting `plex_update_server`");
     let mut state = state.lock()?;
 
     if let Some(server) = server {
         state.settings.plex.select_server(server).ok(); // maybe should error handle on this
     } else {
         state.settings.plex.reset_server_selection();
+    }
+    state.save_settings();
+    app.emit(UPDATE_SETTINGS_EVENT, ()).ok(); // move this to state/settings struct?
+
+    Ok(())
+}
+
+#[derive(Template)]
+#[template(path = "settings/plex/library.html")]
+struct PlexLibraryTemplate {
+    libraries: Arc<[Arc<str>]>,
+    selected: Option<Arc<str>>,
+}
+
+#[tauri::command]
+pub(crate) fn plex_library(state: State<'_, AppState>) -> Result<String> {
+    debug!("Requesting `plex_library`");
+    let state = state.lock()?;
+
+    let libraries = state.settings.plex.get_libraries().unwrap_or([].into());
+    Ok(PlexLibraryTemplate {
+        libraries,
+        selected: state.settings.plex.get_selected_library(),
+    }
+    .render()?)
+}
+
+#[tauri::command]
+pub(crate) fn plex_update_library(
+    state: State<'_, AppState>,
+    library: Option<&str>,
+    app: AppHandle,
+) -> Result<()> {
+    debug!("Requesting `plex_update_library`");
+    let mut state = state.lock()?;
+
+    if let Some(library) = library {
+        state.settings.plex.select_library(library).ok(); // maybe should error handle on this
+    } else {
+        state.settings.plex.reset_library_selection();
     }
     state.save_settings();
     app.emit(UPDATE_SETTINGS_EVENT, ()).ok(); // move this to state/settings struct?

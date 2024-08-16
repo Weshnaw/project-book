@@ -37,7 +37,7 @@ pub(crate) fn setup_state(app: &mut App) -> core::result::Result<(), Box<dyn std
     let mut settings = AppSettings::from_store(&mut store);
     let books = Books::from_store(&mut store);
 
-    settings.plex.refresh_resources().ok(); // Im 50/50 on refreshing at startup
+    settings.plex.refresh_all_unchecked(); // Im 50/50 on refreshing at startup
 
     app.manage(Mutex::new(InnerAppState {
         settings,

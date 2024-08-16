@@ -12,6 +12,7 @@ This is a WIP cross platform plex audiobook player
 - hot reloading settings on change
 - events for settings refresh
 - select plex server
+- select plex library
 
 ## Upcomming Tasks:
 - load library

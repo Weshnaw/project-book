@@ -1,0 +1,10 @@
+<select id="library-input">
+    {% if selected.is_none() %}
+        <option value="" selected disabled hidden>Choose Library...</option>
+    {% endif %}
+    {% for lib in libraries.iter() %}
+    <option value="{{ lib }}"
+        {% if selected.clone().unwrap_or("".into()) == lib.clone() %} selected {% endif %}> {{ lib }}</option>
+    {% endfor %}
+</select>
+<button onclick="updateLibrary()">Update</button>

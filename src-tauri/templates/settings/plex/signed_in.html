@@ -6,3 +6,21 @@
 >
     Plex Logout
 </button>
+<div
+    id="plex-server"
+    hx-get="command:plex_server"
+    hx-trigger="load"
+    hx-target="#plex-server"
+    hx-swap="innerHTML"
+>
+    Loading plex server
+</div>
+<div
+    id="plex-library"
+    hx-get="command:plex_library"
+    hx-trigger="load"
+    hx-target="#plex-library"
+    hx-swap="innerHTML"
+>
+    Loading plex library
+</div>

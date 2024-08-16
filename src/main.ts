@@ -45,9 +45,16 @@ listen("update-settings", (_) => {
 
 document.addEventListener("update-server", async () => {
   debug("update-server event triggered");
-  let serverInputEl: HTMLInputElement =
-    document.querySelector("#server-input")!;
+  let input: HTMLInputElement = document.querySelector("#server-input")!;
   await invoke("plex_update_server", {
-    server: serverInputEl.value,
+    server: input.value,
+  });
+});
+
+document.addEventListener("update-library", async () => {
+  debug("update-library event triggered");
+  let input: HTMLInputElement = document.querySelector("#library-input")!;
+  await invoke("plex_update_library", {
+    library: input.value,
   });
 });

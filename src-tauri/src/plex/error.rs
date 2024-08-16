@@ -6,10 +6,15 @@ pub type Result<T> = core::result::Result<T, Error>;
 pub enum Error {
     InvalidHeader(reqwest::header::InvalidHeaderValue),
     RequestFailed(reqwest::Error),
+    InvalidJson(serde_json::Error),
     WaitingOnPin,
     NoServerSelected,
     InvalidSeverName,
     NotAuthenticated,
     NoResourcesFound,
+    NoLibrariesFound,
+    InvalidLibraryName,
     NoValidConnections,
+    MediaContainerNotFound,
+    LibraryDirectoryNotFound,
 }
