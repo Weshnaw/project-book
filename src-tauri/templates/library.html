@@ -1,9 +1,8 @@
 <div id="tab-content" role="tabpanel" class="tab-content">
-    Library: {{ books }}
     <br />
     <ul>
-        {% for (book_id, book) in books.books.iter() %}
-        <li>{{ book_id }}</li>
+        {% for book in books.iter() %}
+        <li>{{ book.title }}</li>
         {% endfor %}
     </ul>
 </div>

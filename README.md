@@ -13,11 +13,13 @@ This is a WIP cross platform plex audiobook player
 - events for settings refresh
 - select plex server
 - select plex library
+- load library
 
 ## Upcomming Tasks:
-- load library
+- display books
 - download books
-- stream audio
+- audio player
+
 
 ## Future Tasks:
 - handle chapters

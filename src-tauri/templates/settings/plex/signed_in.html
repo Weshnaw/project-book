@@ -9,7 +9,7 @@
 <div
     id="plex-server"
     hx-get="command:plex_server"
-    hx-trigger="load"
+    hx-trigger="load, update-settings from:body"
     hx-target="#plex-server"
     hx-swap="innerHTML"
 >
@@ -18,7 +18,7 @@
 <div
     id="plex-library"
     hx-get="command:plex_library"
-    hx-trigger="load"
+    hx-trigger="load, update-settings from:body"
     hx-target="#plex-library"
     hx-swap="innerHTML"
 >

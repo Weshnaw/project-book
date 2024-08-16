@@ -1,10 +1,10 @@
-mod books;
+//mod books;
 mod error;
 mod settings;
 
 pub use error::*;
 
-pub(crate) use books::*;
+// pub(crate) use books::*;
 use log::info;
 pub(crate) use settings::*;
 
@@ -18,7 +18,7 @@ use crate::plex::PlexPin;
 pub(crate) type AppState = Mutex<InnerAppState>;
 pub(crate) struct InnerAppState {
     pub(crate) settings: AppSettings,
-    pub(crate) books: Books,
+    //pub(crate) books: Books,
     pub(crate) store: Store<Wry>,
     pub(crate) plex_pin: Option<PlexPin>,
 }
@@ -35,13 +35,13 @@ pub(crate) fn setup_state(app: &mut App) -> core::result::Result<(), Box<dyn std
 
     store.load().ok();
     let mut settings = AppSettings::from_store(&mut store);
-    let books = Books::from_store(&mut store);
+    //let books = Books::from_store(&mut store);
 
     settings.plex.refresh_all_unchecked(); // Im 50/50 on refreshing at startup
 
     app.manage(Mutex::new(InnerAppState {
         settings,
-        books,
+        //books,
         store,
         plex_pin: None,
     }));

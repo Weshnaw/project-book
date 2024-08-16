@@ -4,7 +4,10 @@ use askama::Template;
 use log::{debug, info, warn};
 use tauri::{AppHandle, Emitter, State};
 
-use crate::state::{AppSettings, AppState, Books};
+use crate::{
+    plex::Album,
+    state::{AppSettings, AppState},
+};
 
 use super::Result;
 
@@ -22,8 +25,8 @@ pub(crate) fn home(_state: State<'_, AppState>) -> Result<String> {
 
 #[derive(Template)]
 #[template(path = "library.html")]
-struct LibraryTemplate<'a> {
-    books: &'a Books,
+struct LibraryTemplate {
+    books: Arc<[Album]>,
 }
 
 #[tauri::command]
@@ -31,7 +34,7 @@ pub(crate) fn library(state: State<'_, AppState>) -> Result<String> {
     debug!("Requesting `library`");
     let state = state.lock()?;
     let library = LibraryTemplate {
-        books: &state.books,
+        books: state.settings.plex.get_albums()?,
     };
 
     Ok(library.render()?)

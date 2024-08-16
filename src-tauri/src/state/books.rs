@@ -8,8 +8,8 @@ use tauri_plugin_store::Store;
 
 use super::Error;
 
-#[derive(Serialize, Deserialize, Display, Debug)]
-#[display(fmt = "{:#?}", "self")]
+#[derive(Serialize, Deserialize, Display)]
+#[display(fmt = "{}", "serde_json::to_string(self).unwrap()")]
 pub(crate) struct Books {
     pub(crate) books: HashMap<Arc<str>, Book>,
 }
@@ -31,7 +31,7 @@ impl Books {
     }
 }
 
-#[derive(Serialize, Deserialize, Display, Debug)]
+#[derive(Serialize, Deserialize)]
 pub(crate) struct Book;
 
 impl Book {
@@ -62,8 +62,7 @@ impl Book {
     }
 }
 
-#[derive(Serialize, Deserialize, Display, Debug)]
-#[display(fmt = "{:#?}", "self")]
+#[derive(Serialize, Deserialize)]
 struct BookIds(Vec<Arc<str>>);
 
 impl BookIds {
