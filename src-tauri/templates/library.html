@@ -1,10 +1,17 @@
 <div id="tab-content" role="tabpanel" class="tab-content">
-    <br />
-    <ul>
-        {% for book in books.iter() %}
-        <li>{{ book.title }}</li>
+    <div class="library">
+        {% for book in books.iter().take(50) %}
+        <div class="library-item">
+            <book-card
+                thumb="{{ book.thumb.clone().unwrap_or("".into()) }}"
+                title="{{ book.title }}"
+                author="{{ book.parent_title }}"
+            ></book-card>
+        </div>
         {% endfor %}
-    </ul>
+
+        <!-- Some form of paginiation -->
+    </div>
 </div>
 
 <div class="tab-list" role="tablist">

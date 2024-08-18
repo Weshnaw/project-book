@@ -279,19 +279,35 @@ impl Plex {
     }
 
     pub(crate) fn get_albums(&self) -> Result<Arc<[Album]>> {
-        debug!("selecting library");
-        self.albums.to_owned().ok_or(Error::NoAlbumsFound)
-    }
+        debug!("get albums");
+        let albums = self
+            .albums
+            .clone()
+            .ok_or(Error::NoAlbumsFound)?
+            .iter()
+            .map(|album| {
+                let mut album = album.clone();
+                album.thumb = album
+                    .thumb
+                    .clone()
+                    .map(|thumb| self.album_uri(thumb.as_ref()).unwrap_or("".into()));
+                album
+            })
+            .collect();
 
-    pub(crate) fn _get_album_uri(&self, album: &Album) -> Result<Arc<str>> {
-        debug!("selecting library");
+        Ok(albums)
+    }
+    //
+    // thumb="{{ book.title }}"
+    // title="{{ book.title }}"
+    // author="{{ book.parent_title }}"
+    fn album_uri(&self, thumb: &str) -> Result<Arc<str>> {
         let base_uri = self
             .selected_server
             .as_ref()
             .ok_or(Error::NoServerSelected)?
             .uri
             .as_ref();
-        let thumb = album.thumb.as_ref().ok_or(Error::NoThumbnailFound)?;
         let auth = self.user_token.as_ref().ok_or(Error::NotAuthenticated)?;
         let token = format!("?X-Plex-Token={auth}");
 
@@ -374,7 +390,7 @@ pub(crate) struct Album {
     pub(crate) summary: Arc<str>,
     studio: Option<Arc<str>>,
     pub(crate) thumb: Option<Arc<str>>,
-    parent_title: Arc<str>,
+    pub(crate) parent_title: Arc<str>,
     parent_rating_key: Arc<str>,
     pub(crate) year: Option<u64>,
     index: u64,
