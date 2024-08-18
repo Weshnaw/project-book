@@ -100,7 +100,8 @@ button {
     min-width: 200px;
     display: inline-block;
     margin: 5px;
-    height: 200px;
+    height: 10vw;
+    min-height: 200px;
 }
 
 .library {
