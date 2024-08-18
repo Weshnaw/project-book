@@ -103,9 +103,12 @@ button {
     height: 200px;
 }
 
+.library {
+    margin-bottom: 40px;
+}
+
 .tab-list {
     position: fixed;
-    padding: 5px 0 0 5px;
     left: 0;
     bottom: 0;
     width: 100%;

@@ -1,4 +1,4 @@
-use std::sync::PoisonError;
+use std::{num::ParseIntError, sync::PoisonError};
 
 use derive_more::{Display, Error, From};
 use log::error;
@@ -13,6 +13,7 @@ pub type Result<T> = core::result::Result<T, Error>;
 pub enum Error {
     Plex(plex::Error),
     Template(askama::Error),
+    InvalidNumber(ParseIntError),
     FailedToLockState,
 }
 

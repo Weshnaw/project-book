@@ -145,6 +145,10 @@ impl Plex {
         self.user_token = None;
         self.selected_server = None;
         self.selected_library = None;
+        self.libraries = None;
+        self.resources = None;
+        self.albums = None;
+        self.session_token = default_session();
     }
 
     pub(crate) fn refresh_all_unchecked(&mut self) {

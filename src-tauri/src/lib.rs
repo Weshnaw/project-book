@@ -13,6 +13,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             home,
             library,
+            library_pagination,
             settings,
             settings_state,
             plex_signin,

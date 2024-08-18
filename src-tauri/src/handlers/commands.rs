@@ -25,17 +25,47 @@ pub(crate) fn home(_state: State<'_, AppState>) -> Result<String> {
 
 #[derive(Template)]
 #[template(path = "library.html")]
-struct LibraryTemplate {
+struct LibraryTemplate;
+
+#[tauri::command]
+pub(crate) fn library() -> Result<String> {
+    debug!("Requesting `library`");
+    let library = LibraryTemplate;
+
+    Ok(library.render()?)
+}
+
+#[derive(Template)]
+#[template(path = "library/pagination.html")]
+struct LibraryPaginationTemplate {
     books: Arc<[Album]>,
+    next: usize,
 }
 
 #[tauri::command]
-pub(crate) fn library(state: State<'_, AppState>) -> Result<String> {
-    debug!("Requesting `library`");
+pub(crate) fn library_pagination(state: State<'_, AppState>, current: &str) -> Result<String> {
+    debug!("Requesting `library_pagination` at {current:?}");
+    let current: usize = current.parse()?;
     let state = state.lock()?;
-    let library = LibraryTemplate {
-        books: state.settings.plex.get_albums()?,
+    let page_size = 10;
+
+    let books: Arc<[Album]> = state
+        .settings
+        .plex
+        .get_albums()?
+        .iter()
+        .skip(current)
+        .take(page_size)
+        .map(|album| album.clone())
+        .collect();
+
+    let next = if books.len() == page_size {
+        current + page_size
+    } else {
+        0
     };
+
+    let library = LibraryPaginationTemplate { books, next };
 
     Ok(library.render()?)
 }

@@ -16,6 +16,7 @@ This is a WIP cross platform plex audiobook player
 - load library
 - book cards
 - displaying book thumbnails
+- paginated book cards
 
 ## Upcomming Tasks:
 - display books

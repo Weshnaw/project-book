@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { debug } from "@tauri-apps/plugin-log";
+import { debug, trace } from "@tauri-apps/plugin-log";
 
 import htmx from "htmx.org";
 
@@ -8,6 +8,9 @@ import htmx from "htmx.org";
 const COMMAND_PREFIX = "command:";
 
 const patchedSend = async function (this: any, params: any) {
+  trace(`patchedSend ${JSON.stringify(this)} with ${JSON.stringify(params)}`);
+  console.log(this);
+  console.log(params);
   // Make readonly properties writable
   Object.defineProperty(this, "readyState", { writable: true });
   Object.defineProperty(this, "status", { writable: true });
@@ -31,6 +34,8 @@ window.addEventListener("DOMContentLoaded", () => {
   document.body.addEventListener("htmx:beforeSend", (event: any) => {
     const path = event.detail.requestConfig.path;
     if (path.startsWith(COMMAND_PREFIX)) {
+      console.log(event);
+      trace(`htmx command ${JSON.stringify(event.detail.xhr)}`);
       event.detail.xhr.command = path.slice(COMMAND_PREFIX.length);
       event.detail.xhr.send = patchedSend;
     }
@@ -78,10 +83,10 @@ class BookCard extends HTMLElement {
   // Sync attribute changes with properties
   attributeChangedCallback(
     name: string,
-    oldValue: string | null,
+    _oldValue: string | null,
     newValue: string | null,
   ) {
-    debug(`book-card ${name}, ${oldValue}, ${newValue}`);
+    // trace(`book-card ${name}, ${oldValue}, ${newValue}`);
     if (name === "thumb") {
       this.thumb = newValue!;
     }
