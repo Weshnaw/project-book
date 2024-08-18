@@ -8,9 +8,6 @@ import htmx from "htmx.org";
 const COMMAND_PREFIX = "command:";
 
 const patchedSend = async function (this: any, params: any) {
-  trace(`patchedSend ${JSON.stringify(this)} with ${JSON.stringify(params)}`);
-  console.log(this);
-  console.log(params);
   // Make readonly properties writable
   Object.defineProperty(this, "readyState", { writable: true });
   Object.defineProperty(this, "status", { writable: true });
@@ -18,8 +15,8 @@ const patchedSend = async function (this: any, params: any) {
   Object.defineProperty(this, "response", { writable: true });
 
   // Set response
+  debug(`HTMX tauri invoke ${this.command} with ${JSON.stringify(params)}`);
   const query = new URLSearchParams(params);
-  debug(`HTMX tauri invoke ${this.command} with ${JSON.stringify(query)}`);
   this.response = await invoke(this.command, Object.fromEntries(query));
   this.readyState = XMLHttpRequest.DONE;
   this.status = 200;
@@ -34,8 +31,6 @@ window.addEventListener("DOMContentLoaded", () => {
   document.body.addEventListener("htmx:beforeSend", (event: any) => {
     const path = event.detail.requestConfig.path;
     if (path.startsWith(COMMAND_PREFIX)) {
-      console.log(event);
-      trace(`htmx command ${JSON.stringify(event.detail.xhr)}`);
       event.detail.xhr.command = path.slice(COMMAND_PREFIX.length);
       event.detail.xhr.send = patchedSend;
     }
