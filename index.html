@@ -18,24 +18,5 @@
                 hx-swap="innerHTML"
             ></div>
         </div>
-        <script>
-            // todo; generic function
-            function updateServer() {
-                document.dispatchEvent(
-                    new CustomEvent("update-server", {
-                        bubbles: true,
-                        cancelable: true,
-                    }),
-                );
-            }
-            function updateLibrary() {
-                document.dispatchEvent(
-                    new CustomEvent("update-library", {
-                        bubbles: true,
-                        cancelable: true,
-                    }),
-                );
-            }
-        </script>
     </body>
 </html>

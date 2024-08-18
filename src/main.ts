@@ -43,18 +43,96 @@ listen("update-settings", (_) => {
   htmx.trigger(htmx.find("body")!, "update-settings", null);
 });
 
-document.addEventListener("update-server", async () => {
-  debug("update-server event triggered");
+(<any>window).updateServer = async () => {
+  debug("updateServer triggered");
   let input: HTMLInputElement = document.querySelector("#server-input")!;
   await invoke("plex_update_server", {
     server: input.value,
   });
-});
-
-document.addEventListener("update-library", async () => {
-  debug("update-library event triggered");
+};
+(<any>window).updateLibrary = async () => {
+  debug("updateLibrary triggered");
   let input: HTMLInputElement = document.querySelector("#library-input")!;
   await invoke("plex_update_library", {
     library: input.value,
   });
-});
+};
+
+class BookCard extends HTMLElement {
+  thumb: string = "";
+  title: string = "";
+  author: string = "";
+
+  constructor() {
+    super();
+    this.attachShadow({ mode: "open" });
+
+    this.render();
+  }
+
+  // Watch for attribute changes
+  static get observedAttributes() {
+    return ["thumb", "title", "author"];
+  }
+
+  // Sync attribute changes with properties
+  attributeChangedCallback(
+    name: string,
+    oldValue: string | null,
+    newValue: string | null,
+  ) {
+    debug(`book-card ${name}, ${oldValue}, ${newValue}`);
+    if (name === "thumb") {
+      this.thumb = newValue!;
+    }
+    if (name === "title") {
+      this.title = newValue!;
+    }
+    if (name === "author") {
+      this.author = newValue!;
+    }
+
+    this.render();
+  }
+
+  // <img src="${this.thumb}" alt="${this.title}">
+  // <span>${this.title}</span><br />
+  // <span>${this.author}</span><br />
+  render() {
+    this.shadowRoot!.innerHTML = `
+      <style>
+        .card {
+          transition: 0.3s;
+          border-radius: 5px; /* 5px rounded corners */
+          height: 100%
+        }
+        img {
+          border-radius: 5px 5px 0 0;
+          width: 100%;
+          height: 100%;
+        }
+        .card:hover {
+          box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+        }
+        .text {
+          padding: 2px 16px;
+          overflow: hidden;
+          white-space: nowrap; /* Don't forget this one */
+          text-overflow: ellipsis;
+        }
+        .title {
+          padding: 2px 16px;
+        }
+      </style>
+      <div class="card">
+        <img src="${this.thumb}" alt="${this.title}">
+        <div class="text">
+          ${this.title}<br />
+          <sub>${this.author}</sub>
+        </div>
+      </div>
+    `;
+  }
+}
+
+customElements.define("book-card", BookCard);

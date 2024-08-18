@@ -14,6 +14,8 @@ This is a WIP cross platform plex audiobook player
 - select plex server
 - select plex library
 - load library
+- book cards
+- displaying book thumbnails
 
 ## Upcomming Tasks:
 - display books
@@ -47,6 +49,8 @@ This is a WIP cross platform plex audiobook player
 - is it fine to ignore save errors? (ie `store.save().ok();`)
 - Shared client for plex
   - Custom deserializer?
+- search
+- figure out why some thumbs are not appearing
 
 ## Recommended IDE Setup for Tauri
 
