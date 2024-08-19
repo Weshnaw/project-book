@@ -15,6 +15,7 @@ pub fn run() {
             library,
             library_pagination,
             book,
+            start_playing,
             settings,
             settings_state,
             plex_signin,

@@ -6,7 +6,7 @@ use tauri::{AppHandle, Emitter, State};
 
 use crate::{
     plex::Album,
-    state::{AppSettings, AppState},
+    state::{AppSettings, AppState, Book},
 };
 
 use super::Result;
@@ -85,6 +85,42 @@ pub(crate) fn book(state: State<'_, AppState>, key: &str) -> Result<String> {
     };
 
     Ok(book.render()?)
+}
+
+#[derive(Template)]
+#[template(path = "mini-player.html")]
+struct MiniPlayerTemplate {
+    book: Album,
+}
+
+const UPDATE_PLAYER_EVENT: &str = "update-player";
+#[tauri::command]
+pub(crate) fn start_playing(
+    state: State<'_, AppState>,
+    app: AppHandle,
+    key: &str,
+    chapter: Option<&str>,
+    _paused: Option<&str>,
+) -> Result<String> {
+    debug!("Requesting `book` at {key:?}");
+    let mut state = state.lock()?;
+    if let Some(_chapter) = chapter {
+        todo!("TODO start from chapter")
+    } else {
+        if let Some(_current) = state.current_book.clone() {
+            app.emit(UPDATE_PLAYER_EVENT, ()).ok();
+        }
+
+        let album = state.settings.plex.get_album(key)?;
+        let book = MiniPlayerTemplate {
+            book: album.clone(),
+        };
+        // TODO get any progess if previously started
+        state.current_book = Some(Book::new(album));
+        // TODO save state
+
+        Ok(book.render()?)
+    }
 }
 
 const UPDATE_SETTINGS_EVENT: &str = "update-settings";

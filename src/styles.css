@@ -105,6 +105,10 @@ button {
     cursor: pointer;
 }
 
+body::-webkit-scrollbar {
+    display: none;
+}
+
 body:has(div#modal) {
     overflow: hidden;
 }
@@ -163,6 +167,37 @@ body:has(div#modal) {
 
 #tabs > #tab-content {
     margin-bottom: 40px;
+}
+
+.mini-player {
+    display: flex;
+    position: fixed;
+    left: 0;
+    bottom: 40px;
+    width: 100%;
+    background: #2f2f2f;
+    z-index: 2000;
+    height: 60px;
+}
+
+.mini-player > img {
+    margin: 0 20px;
+    height: 100%;
+
+    object-fit: contain;
+}
+
+.mini-player > .details {
+    margin: auto auto auto 0;
+    line-height: 12px;
+}
+
+body:has(div.mini-player) #tabs > #tab-content {
+    margin-bottom: 100px;
+}
+
+body:has(div.mini-player) #modal {
+    bottom: 100px;
 }
 
 @media (prefers-color-scheme: dark) {

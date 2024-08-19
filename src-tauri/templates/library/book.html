@@ -4,6 +4,7 @@
     </div>
     <div class="modal-content">
         <img src="{{ book.thumb.clone().unwrap_or("".into()) }}" alt="{{ book.title }}"><br />
+        <span class="progress">todo progress</span><br />
         <span class="title">{{ book.title }}</span><button
             hx-post="command:start_playing"
                 hx-vals='{"key": "{{ book.rating_key }}" }'

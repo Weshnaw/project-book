@@ -1,10 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { debug, trace } from "@tauri-apps/plugin-log";
+import { debug } from "@tauri-apps/plugin-log";
 
 import htmx from "htmx.org";
 
-/* HTMX plugin */
 const COMMAND_PREFIX = "command:";
 
 const patchedSend = async function (this: any, params: any) {
@@ -36,11 +35,17 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
-/* END HTMX pluigin */
 
 listen("update-settings", (_) => {
   debug(`update-settings event`);
   htmx.trigger(htmx.find("body")!, "update-settings", null);
+});
+
+listen("update-player", (_) => {
+  debug(`update-player event`);
+  let player: HTMLInputElement = document.querySelector(".mini-player")!;
+
+  player.remove();
 });
 
 (<any>window).updateServer = async () => {

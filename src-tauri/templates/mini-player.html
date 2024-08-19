@@ -1,0 +1,8 @@
+<div class="mini-player">
+    <img src="{{ book.thumb.clone().unwrap_or("".into()) }}" alt="{{ book.title }}">
+    <div class="details">
+        <span class="chapter">chapter 1</span><br />
+        <span class="title"><sub>{{ book.title }}</sub></span>
+    </div>
+    <button>play/pause</button>
+</div>

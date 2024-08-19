@@ -17,9 +17,10 @@ This is a WIP cross platform plex audiobook player
 - book cards
 - displaying book thumbnails
 - paginated book cards
+- book modal
+- mini player
 
 ## Upcomming Tasks:
-- display books
 - download books
 - audio player
 
