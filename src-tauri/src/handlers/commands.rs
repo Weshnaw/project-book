@@ -47,7 +47,7 @@ pub(crate) fn library_pagination(state: State<'_, AppState>, current: &str) -> R
     debug!("Requesting `library_pagination` at {current:?}");
     let current: usize = current.parse()?;
     let state = state.lock()?;
-    let page_size = 10;
+    let page_size = 12; // more likely to fit evenly into the display
 
     let books: Arc<[Album]> = state
         .settings
@@ -68,6 +68,23 @@ pub(crate) fn library_pagination(state: State<'_, AppState>, current: &str) -> R
     let library = LibraryPaginationTemplate { books, next };
 
     Ok(library.render()?)
+}
+
+#[derive(Template)]
+#[template(path = "library/book.html")]
+struct BookTemplate {
+    book: Album,
+}
+
+#[tauri::command]
+pub(crate) fn book(state: State<'_, AppState>, key: &str) -> Result<String> {
+    debug!("Requesting `book` at {key:?}");
+    let state = state.lock()?;
+    let book = BookTemplate {
+        book: state.settings.plex.get_album(key)?,
+    };
+
+    Ok(book.render()?)
 }
 
 const UPDATE_SETTINGS_EVENT: &str = "update-settings";

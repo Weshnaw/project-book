@@ -301,10 +301,28 @@ impl Plex {
 
         Ok(albums)
     }
-    //
-    // thumb="{{ book.title }}"
-    // title="{{ book.title }}"
-    // author="{{ book.parent_title }}"
+
+    pub(crate) fn get_album(&self, key: &str) -> Result<Album> {
+        debug!("get album: {key}");
+        let album = self
+            .albums
+            .clone()
+            .ok_or(Error::NoAlbumsFound)?
+            .iter()
+            .find(|album| album.rating_key.as_ref() == key)
+            .map(|album| {
+                let mut album = album.clone();
+                album.thumb = album
+                    .thumb
+                    .clone()
+                    .map(|thumb| self.album_uri(thumb.as_ref()).unwrap_or("".into()));
+                album
+            })
+            .ok_or(Error::NoAlbumFound)?;
+
+        Ok(album)
+    }
+
     fn album_uri(&self, thumb: &str) -> Result<Arc<str>> {
         let base_uri = self
             .selected_server
@@ -390,7 +408,7 @@ struct Library {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct Album {
     pub(crate) title: Arc<str>,
-    rating_key: Arc<str>,
+    pub(crate) rating_key: Arc<str>,
     pub(crate) summary: Arc<str>,
     studio: Option<Arc<str>>,
     pub(crate) thumb: Option<Arc<str>>,

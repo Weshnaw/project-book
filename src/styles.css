@@ -102,10 +102,53 @@ button {
     margin: 5px;
     height: 10vw;
     min-height: 200px;
+    cursor: pointer;
 }
 
-.library {
-    margin-bottom: 40px;
+body:has(div#modal) {
+    overflow: hidden;
+}
+
+#modal {
+    background-color: #2f2f2f;
+    position: fixed;
+    top: 0px;
+    bottom: 40px;
+    left: 0px;
+    right: 0px;
+    z-index: 1000;
+
+    /* Animate when opening */
+    animation-name: fadeIn;
+    animation-duration: 150ms;
+    animation-timing-function: ease;
+    overflow-y: auto;
+}
+
+#modal > .modal-content {
+    text-align: center;
+    padding: 20px;
+    animation-name: zoomIn;
+    animation-duration: 150ms;
+    animation-timing-function: ease;
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes zoomIn {
+    0% {
+        transform: scale(0.9);
+    }
+    100% {
+        transform: scale(1);
+    }
 }
 
 .tab-list {
@@ -114,6 +157,12 @@ button {
     bottom: 0;
     width: 100%;
     background: #2f2f2f;
+    z-index: 10000;
+    height: 40px;
+}
+
+#tabs > #tab-content {
+    margin-bottom: 40px;
 }
 
 @media (prefers-color-scheme: dark) {

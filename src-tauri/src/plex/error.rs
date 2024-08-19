@@ -13,6 +13,7 @@ pub enum Error {
     InvalidSeverName,
     NotAuthenticated,
     NoResourcesFound,
+    NoAlbumFound,
     InvalidLibraryName,
     NoValidConnections,
     MediaContainerNotFound,

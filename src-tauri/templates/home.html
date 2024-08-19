@@ -10,11 +10,11 @@
 
 <div class="tab-list" role="tablist">
     <button
-        hx-get="command:home"
         class="selected"
         role="tab"
         aria-selected="true"
         aria-controls="tab-content"
+        onclick="closeModal()"
     >
         Home
     </button>
@@ -23,6 +23,7 @@
         role="tab"
         aria-selected="false"
         aria-controls="tab-content"
+        onclick="closeModal()"
     >
         Library
     </button>
@@ -31,6 +32,7 @@
         role="tab"
         aria-selected="false"
         aria-controls="tab-content"
+        onclick="closeModal()"
     >
         Settings
     </button>

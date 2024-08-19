@@ -57,6 +57,12 @@ listen("update-settings", (_) => {
     library: input.value,
   });
 };
+(<any>window).closeModal = async () => {
+  debug("closeModal triggered");
+  let modal: HTMLInputElement = document.querySelector("#modal")!;
+
+  modal.remove();
+};
 
 class BookCard extends HTMLElement {
   thumb: string = "";
@@ -81,7 +87,6 @@ class BookCard extends HTMLElement {
     _oldValue: string | null,
     newValue: string | null,
   ) {
-    // trace(`book-card ${name}, ${oldValue}, ${newValue}`);
     if (name === "thumb") {
       this.thumb = newValue!;
     }
@@ -95,9 +100,6 @@ class BookCard extends HTMLElement {
     this.render();
   }
 
-  // <img src="${this.thumb}" alt="${this.title}">
-  // <span>${this.title}</span><br />
-  // <span>${this.author}</span><br />
   render() {
     this.shadowRoot!.innerHTML = `
       <style>

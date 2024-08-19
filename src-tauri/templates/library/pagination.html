@@ -1,5 +1,9 @@
 {% for book in books.iter() %}
-    <div class="library-item">
+    <div class="library-item"
+        hx-post="command:book"
+        hx-vals='{"key": "{{ book.rating_key }}"}'
+        hx-target="body"
+        hx-swap="beforeend">
         <book-card
             thumb="{{ book.thumb.clone().unwrap_or("".into()) }}"
             title="{{ book.title }}"
@@ -15,7 +19,6 @@
     hx-trigger="intersect"
     hx-target="#library-paginated"
     hx-vals='{"current": {{ next }}}'
-    hx-params="current"
     hx-swap="outerHTML">
         Loading...
 </div>
