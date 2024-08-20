@@ -88,8 +88,8 @@ pub(crate) fn book(state: State<'_, AppState>, key: &str) -> Result<String> {
 }
 
 #[derive(Template)]
-#[template(path = "mini-player.html")]
-struct MiniPlayerTemplate {
+#[template(path = "player.html")]
+struct PlayerTemplate {
     book: Album,
 }
 
@@ -112,7 +112,7 @@ pub(crate) fn start_playing(
         }
 
         let album = state.settings.plex.get_album(key)?;
-        let book = MiniPlayerTemplate {
+        let book = PlayerTemplate {
             book: album.clone(),
         };
         // TODO get any progess if previously started

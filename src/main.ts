@@ -43,9 +43,10 @@ listen("update-settings", (_) => {
 
 listen("update-player", (_) => {
   debug(`update-player event`);
-  let player: HTMLInputElement = document.querySelector(".mini-player")!;
-
-  player.remove();
+  let player: HTMLInputElement | null = document.querySelector("#player");
+  if (player) {
+    player.remove();
+  }
 });
 
 (<any>window).updateServer = async () => {
@@ -64,9 +65,29 @@ listen("update-player", (_) => {
 };
 (<any>window).closeModal = async () => {
   debug("closeModal triggered");
-  let modal: HTMLInputElement = document.querySelector("#modal")!;
+  let modal: HTMLElement | null = document.querySelector("#modal");
+  if (modal) {
+    modal.remove();
+  }
+};
 
-  modal.remove();
+(<any>window).closePlayer = async () => {
+  let player: HTMLElement | null = document.querySelector("#player");
+  if (player) {
+    debug("closePlayer triggered");
+    player.classList.remove("expanded");
+  }
+};
+(<any>window).openPlayer = async () => {
+  let player: HTMLElement | null = document.querySelector("#player");
+  if (player && !player.classList.contains("expanded")) {
+    debug("openPlayer triggered");
+    player.classList.add("expanded");
+  }
+};
+(<any>window).tabButton = async () => {
+  (<any>window).closePlayer();
+  (<any>window).closeModal();
 };
 
 class BookCard extends HTMLElement {

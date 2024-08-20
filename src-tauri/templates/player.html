@@ -1,0 +1,32 @@
+<!-- maybe use web components instead of display: None; and swap between them for the inner-html -->
+<div id="player" onclick="openPlayer()">
+    <div class="player-header">
+        <button onclick="window.event.cancelBubble = true;closePlayer()">Close</button>
+    </div>
+    <div class="player-content">
+        <img src="{{ book.thumb.clone().unwrap_or("".into()) }}" alt="{{ book.title }}">
+
+        <div class="total-progress">10:00:00 / 100:00:00</div>
+        <div class="progress-bar">todo chapter progress bar</div>
+        <div class="chapter-progress"><span class="current">10:00</span><span class="total">15:00</span></div>
+        <div class="details">
+            <span class="chapter">chapter 1</span><br />
+            <span class="title"><sub>{{ book.title }}</sub></span>
+        </div>
+        <div class="controls">
+            <button class="previous" onclick="window.event.cancelBubble = true;"><<</button>
+            <button class="rewind" onclick="window.event.cancelBubble = true;"><</button>
+            <button class="play-button" onclick="window.event.cancelBubble = true;">play</button>
+            <button class="foward" onclick="window.event.cancelBubble = true;">></button>
+            <button class="next" onclick="window.event.cancelBubble = true;">>></button><br />
+            <button class="playback-speed" onclick="window.event.cancelBubble = true;">1.0x</button><!-- should be dropdown -->
+            <button class="bookmark" onclick="window.event.cancelBubble = true;">mark</button>
+            <button class="timer" onclick="window.event.cancelBubble = true;">ZZZ</button><!-- should be dropdown -->
+        </div>
+        <div class="chapters">Chapters
+            <ul>
+                <li>chapter 1</li>
+            </ul>
+        </div>
+    </div>
+</div>
