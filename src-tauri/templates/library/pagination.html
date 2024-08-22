@@ -1,25 +1,26 @@
 {% for book in books.iter() %}
-    <div class="library-item"
-        hx-post="command:book"
-        hx-vals='{"key": "{{ book.rating_key }}"}'
-        hx-target="body"
-        hx-swap="beforeend">
-        <book-card
-            thumb="{{ book.thumb.clone().unwrap_or("".into()) }}"
-            title="{{ book.title }}"
-            author="{{ book.parent_title }}"
-        ></book-card>
-    </div>
-{% endfor %}
-
-{% if next != 0 %}
+<div
+    class="library-item"
+    hx-post="command:book"
+    hx-vals='{"key": "{{ book.rating_key }}"}'
+    hx-target="body"
+    hx-swap="beforeend"
+>
+    <book-card
+        thumb="{{ book.thumb }}"
+        title="{{ book.title }}"
+        author="{{ book.parent_title }}"
+    ></book-card>
+</div>
+{% endfor %} {% if next != 0 %}
 <div
     id="library-paginated"
     hx-post="command:library_pagination"
     hx-trigger="intersect"
     hx-target="#library-paginated"
     hx-vals='{"current": {{ next }}}'
-    hx-swap="outerHTML">
-        Loading...
+    hx-swap="outerHTML"
+>
+    Loading...
 </div>
 {% endif %}

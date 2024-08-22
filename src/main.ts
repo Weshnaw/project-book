@@ -75,6 +75,7 @@ listen("update-player", (_) => {
   let player: HTMLElement | null = document.querySelector("#player");
   if (player) {
     debug("closePlayer triggered");
+    player.classList.add("shrink");
     player.classList.remove("expanded");
   }
 };
@@ -83,11 +84,24 @@ listen("update-player", (_) => {
   if (player && !player.classList.contains("expanded")) {
     debug("openPlayer triggered");
     player.classList.add("expanded");
+    player.classList.remove("shrink");
   }
 };
 (<any>window).tabButton = async () => {
   (<any>window).closePlayer();
   (<any>window).closeModal();
+};
+(<any>window).download = async (key: String) => {
+  debug(`download triggered with ${key}`);
+  await invoke("plex_download_book", {
+    key: key,
+  });
+};
+(<any>window).delete = async (key: String) => {
+  debug(`delete triggered with ${key}`);
+  await invoke("plex_delete_book", {
+    key: key,
+  });
 };
 
 class BookCard extends HTMLElement {

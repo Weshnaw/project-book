@@ -97,7 +97,7 @@ body:has(div#modal) {
 
     /* Animate when opening */
     animation-name: fadeIn;
-    animation-duration: 150ms;
+    animation-duration: 50ms;
     animation-timing-function: ease;
     overflow-y: auto;
 }
@@ -106,7 +106,7 @@ body:has(div#modal) {
     text-align: center;
     padding: 20px;
     animation-name: zoomIn;
-    animation-duration: 150ms;
+    animation-duration: 50ms;
     animation-timing-function: ease;
 }
 
@@ -154,8 +154,11 @@ body:has(div#modal) {
 #player:not(.expanded) {
     display: flex;
     height: 60px;
+}
+
+#player.shrink:not(.expanded) {
     animation-name: shrink;
-    animation-duration: 150ms;
+    animation-duration: 50ms;
     animation-timing-function: ease;
 }
 
@@ -206,7 +209,7 @@ body:has(div#modal) {
     top: 0;
     overflow-y: auto;
     animation-name: grow;
-    animation-duration: 150ms;
+    animation-duration: 50ms;
     animation-timing-function: ease;
 }
 @keyframes grow {

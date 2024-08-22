@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use askama::Template;
 use log::{debug, info, warn};
 use tauri::{AppHandle, Emitter, State};
@@ -37,8 +35,8 @@ pub(crate) fn library() -> Result<String> {
 
 #[derive(Template)]
 #[template(path = "library/pagination.html")]
-struct LibraryPaginationTemplate {
-    books: Arc<[Album]>,
+struct LibraryPaginationTemplate<'a> {
+    books: &'a [Album],
     next: usize,
 }
 
@@ -49,15 +47,7 @@ pub(crate) fn library_pagination(state: State<'_, AppState>, current: &str) -> R
     let state = state.lock()?;
     let page_size = 12; // more likely to fit evenly into the display
 
-    let books: Arc<[Album]> = state
-        .settings
-        .plex
-        .get_albums()?
-        .iter()
-        .skip(current)
-        .take(page_size)
-        .map(|album| album.clone())
-        .collect();
+    let books = &state.settings.plex.get_albums()?[current..(current + page_size)];
 
     let next = if books.len() == page_size {
         current + page_size
@@ -74,6 +64,7 @@ pub(crate) fn library_pagination(state: State<'_, AppState>, current: &str) -> R
 #[template(path = "library/book.html")]
 struct BookTemplate {
     book: Album,
+    downloaded: bool,
 }
 
 #[tauri::command]
@@ -82,6 +73,7 @@ pub(crate) fn book(state: State<'_, AppState>, key: &str) -> Result<String> {
     let state = state.lock()?;
     let book = BookTemplate {
         book: state.settings.plex.get_album(key)?,
+        downloaded: false, // todo check against downloaded books in state
     };
 
     Ok(book.render()?)
@@ -112,13 +104,13 @@ pub(crate) fn start_playing(
         }
 
         let album = state.settings.plex.get_album(key)?;
+        // TODO get any progess if previously started
+
         let book = PlayerTemplate {
             book: album.clone(),
         };
-        // TODO get any progess if previously started
         state.current_book = Some(Book::new(album));
         // TODO save state
-
         Ok(book.render()?)
     }
 }
@@ -153,8 +145,8 @@ pub(crate) fn settings_state(state: State<'_, AppState>) -> Result<String> {
 
 #[derive(Template)]
 #[template(path = "settings/plex/pin.html")]
-struct PinTemplate {
-    pin: Arc<str>,
+struct PinTemplate<'a> {
+    pin: &'a str,
 }
 
 #[derive(Template)]
@@ -201,9 +193,9 @@ pub(crate) fn plex_check(state: State<'_, AppState>, app: AppHandle) -> Result<S
     } else {
         info!("Plex signin unsuccessful");
         PlexSignedOutTemplate.render()
-    };
+    }?;
 
-    Ok(plex?)
+    Ok(plex)
 }
 
 #[tauri::command]
@@ -223,7 +215,7 @@ pub(crate) fn plex(state: State<'_, AppState>) -> Result<String> {
     let state = state.lock()?;
     let plex = if state.settings.plex.has_user() {
         PlexSignedInTemplate.render()
-    } else if let Some(pin) = state.plex_pin.clone() {
+    } else if let Some(pin) = &state.plex_pin {
         PinTemplate { pin: pin.get_pin() }.render()
     } else {
         PlexSignedOutTemplate.render()
@@ -233,9 +225,9 @@ pub(crate) fn plex(state: State<'_, AppState>) -> Result<String> {
 
 #[derive(Template)]
 #[template(path = "settings/plex/server.html")]
-struct PlexServerTemplate {
-    urls: Arc<[Arc<str>]>,
-    selected: Option<Arc<str>>,
+struct PlexServerTemplate<'a> {
+    urls: Box<[&'a str]>,
+    selected: Option<&'a str>,
 }
 
 #[tauri::command]
@@ -273,9 +265,9 @@ pub(crate) fn plex_update_server(
 
 #[derive(Template)]
 #[template(path = "settings/plex/library.html")]
-struct PlexLibraryTemplate {
-    libraries: Arc<[Arc<str>]>,
-    selected: Option<Arc<str>>,
+struct PlexLibraryTemplate<'a> {
+    libraries: Box<[&'a str]>,
+    selected: Option<&'a str>,
 }
 
 #[tauri::command]

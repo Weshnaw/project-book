@@ -2,6 +2,7 @@ mod error;
 
 pub use error::*;
 use log::{debug, trace, warn};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde_json::Value;
 
 use std::{env, sync::Arc, time::Duration};
@@ -13,36 +14,36 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
 struct PlexServer {
-    name: Arc<str>,
+    name: Box<str>,
     uri: Arc<str>,
 }
 #[derive(Serialize, Deserialize, Display)]
 #[display(fmt = "{}", "serde_json::to_string(self).unwrap()")]
 pub(crate) struct Plex {
-    client_ident: Arc<str>,
+    client_ident: Box<str>,
     user_token: Option<Arc<str>>,
     selected_server: Option<PlexServer>,
     selected_library: Option<Library>,
     #[serde(skip_serializing)] // Im 50/50 on refreshing at startup
-    resources: Option<Arc<[PlexResource]>>, // TODO might be better as hashmap
+    resources: Option<Box<[PlexResource]>>, // TODO might be better as hashmap
     #[serde(skip_serializing)] // Im 50/50 on refreshing at startup
-    libraries: Option<Arc<[Library]>>, // TODO might be better as hashmap
+    libraries: Option<Box<[Library]>>, // TODO might be better as hashmap
     #[serde(skip_serializing)] // Im 50/50 on refreshing at startup
-    albums: Option<Arc<[Album]>>, // TODO might be better as hashmap
+    albums: Option<Box<[Album]>>, // TODO might be better as hashmap
     #[serde(skip_serializing)]
     #[serde(default = "default_session")]
-    session_token: Arc<str>,
+    session_token: Box<str>,
     // TODO: generate new client on Deserialize
     // #[serde(skip_serializing)]
     // client: reqwest::Client,
     // TODO: figure out device info
     // #[serde(skip_serializing)]
-    //device: Arc<str>,
+    //device: Box<str>,
     // #[serde(skip_serializing)]
-    //device_name: Arc<str>,
+    //device_name: Box<str>,
 }
 
-fn default_session() -> Arc<str> {
+fn default_session() -> Box<str> {
     Uuid::new_v4().to_string().into()
 }
 
@@ -197,20 +198,22 @@ impl Plex {
             .as_ref()
             .ok_or(Error::NoLibrarySelected)?;
         let client = self.create_client()?; // TODO: shared client in state
-        self.albums = Some(library.all(&client, &server.uri)?);
+        let auth = self.user_token.as_ref().ok_or(Error::NotAuthenticated)?;
+        let token = format!("?X-Plex-Token={auth}");
+        self.albums = Some(library.all(&client, &server.uri, &token)?);
         debug!("found {} albums", self.albums.as_ref().unwrap().len());
         Ok(())
     }
 
-    pub(crate) fn get_servers(&self) -> Result<Arc<[Arc<str>]>> {
+    pub(crate) fn get_servers(&self) -> Result<Box<[&str]>> {
         debug!("listing resources");
         let resources = self.resources.as_ref().ok_or(Error::NoResourcesFound)?;
 
         //let client = self.create_client()?; // TODO: shared client in state
         Ok(resources
-            .iter()
-            //.filter(|res| res.get_first_working_connection(&client).is_ok()) // TODO fix blocking requests
-            .map(|resource| resource.name.clone())
+            .par_iter()
+            //.filter(|res| res.get_first_working_connection(&client).is_ok())
+            .map(|resource| resource.name.as_ref())
             .collect())
     }
 
@@ -222,8 +225,8 @@ impl Plex {
         let resources = self.resources.as_ref().ok_or(Error::NoResourcesFound)?;
         let client = self.create_client()?; // TODO: shared client in state
         let server = resources
-            .iter()
-            .find(|res| res.name == server.into())
+            .par_iter()
+            .find_any(|res| res.name == server.into())
             .ok_or(Error::InvalidSeverName)?
             .get_first_working_connection(&client)
             .map(|conn| PlexServer {
@@ -238,10 +241,10 @@ impl Plex {
         Ok(())
     }
 
-    pub(crate) fn get_selected_server(&self) -> Option<Arc<str>> {
+    pub(crate) fn get_selected_server(&self) -> Option<&str> {
         self.selected_server
             .as_ref()
-            .map(|server| server.name.clone())
+            .map(|server| server.name.as_ref())
     }
 
     pub(crate) fn reset_server_selection(&mut self) {
@@ -249,10 +252,14 @@ impl Plex {
         self.selected_server = None;
     }
 
-    pub(crate) fn get_libraries(&self) -> Result<Arc<[Arc<str>]>> {
+    pub(crate) fn get_libraries(&self) -> Result<Box<[&str]>> {
         let libraries = self.libraries.as_ref().ok_or(Error::NoLibrariesFound)?;
 
-        Ok(libraries.iter().map(|lib| lib.title.clone()).collect()) // maybe filter by music category
+        Ok(libraries
+            .as_ref()
+            .par_iter()
+            .map(|lib| lib.title.as_ref())
+            .collect()) // maybe filter by music category
     }
 
     pub(crate) fn select_library(&mut self, server: &str) -> Result<()> {
@@ -260,8 +267,8 @@ impl Plex {
         let libraries = self.libraries.as_ref().ok_or(Error::NoLibrariesFound)?;
 
         let library = libraries
-            .iter()
-            .find(|res| res.title == server.into())
+            .par_iter()
+            .find_any(|res| res.title == server.into())
             .ok_or(Error::InvalidLibraryName)?;
 
         self.selected_library = Some(library.clone());
@@ -271,10 +278,10 @@ impl Plex {
         Ok(())
     }
 
-    pub(crate) fn get_selected_library(&self) -> Option<Arc<str>> {
+    pub(crate) fn get_selected_library(&self) -> Option<&str> {
         self.selected_library
             .as_ref()
-            .map(|library| library.title.clone())
+            .map(|library| library.title.as_ref())
     }
 
     pub(crate) fn reset_library_selection(&mut self) {
@@ -282,62 +289,28 @@ impl Plex {
         self.selected_library = None;
     }
 
-    pub(crate) fn get_albums(&self) -> Result<Arc<[Album]>> {
+    pub(crate) fn get_albums(&self) -> Result<&[Album]> {
         debug!("get albums");
-        let albums = self
-            .albums
-            .clone()
-            .ok_or(Error::NoAlbumsFound)?
-            .iter()
-            .map(|album| {
-                let mut album = album.clone();
-                album.thumb = album
-                    .thumb
-                    .clone()
-                    .map(|thumb| self.album_uri(thumb.as_ref()).unwrap_or("".into()));
-                album
-            })
-            .collect();
-
-        Ok(albums)
+        self.albums
+            .as_ref()
+            .ok_or(Error::NoAlbumsFound)
+            .map(|album| album.as_ref())
     }
 
     pub(crate) fn get_album(&self, key: &str) -> Result<Album> {
         debug!("get album: {key}");
-        let album = self
+        Ok(self
             .albums
-            .clone()
-            .ok_or(Error::NoAlbumsFound)?
-            .iter()
-            .find(|album| album.rating_key.as_ref() == key)
-            .map(|album| {
-                let mut album = album.clone();
-                album.thumb = album
-                    .thumb
-                    .clone()
-                    .map(|thumb| self.album_uri(thumb.as_ref()).unwrap_or("".into()));
-                album
-            })
-            .ok_or(Error::NoAlbumFound)?;
-
-        Ok(album)
-    }
-
-    fn album_uri(&self, thumb: &str) -> Result<Arc<str>> {
-        let base_uri = self
-            .selected_server
             .as_ref()
-            .ok_or(Error::NoServerSelected)?
-            .uri
-            .as_ref();
-        let auth = self.user_token.as_ref().ok_or(Error::NotAuthenticated)?;
-        let token = format!("?X-Plex-Token={auth}");
-
-        Ok(format!("{base_uri}{thumb}{token}").into())
+            .ok_or(Error::NoAlbumsFound)?
+            .par_iter()
+            .find_any(|album| album.rating_key.as_ref() == key)
+            .ok_or(Error::NoAlbumFound)?
+            .clone())
     }
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct PlexPin {
     id: u64,
@@ -360,8 +333,8 @@ impl PlexPin {
         Ok(res.json()?)
     }
 
-    pub(crate) fn get_pin(&self) -> Arc<str> {
-        self.code.clone()
+    pub(crate) fn get_pin(&self) -> &str {
+        self.code.as_ref()
     }
 }
 
@@ -374,12 +347,12 @@ struct PlexConnections {
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct PlexResource {
-    name: Arc<str>,
-    connections: Arc<[PlexConnections]>,
+    name: Box<str>,
+    connections: Box<[PlexConnections]>,
 }
 
 impl PlexResource {
-    fn list(client: &reqwest::blocking::Client) -> Result<Arc<[Self]>> {
+    fn list(client: &reqwest::blocking::Client) -> Result<Box<[Self]>> {
         let url = "https://plex.tv/api/v2/resources";
         Ok(client.get(url).send()?.json()?)
     }
@@ -389,8 +362,8 @@ impl PlexResource {
         client: &reqwest::blocking::Client,
     ) -> Result<&PlexConnections> {
         self.connections
-            .iter()
-            .find(|conn| client.get(conn.uri.as_ref()).send().is_ok())
+            .par_iter()
+            .find_any(|conn| client.get(conn.uri.as_ref()).send().is_ok())
             .ok_or(Error::NoValidConnections)
     }
 }
@@ -411,7 +384,8 @@ pub(crate) struct Album {
     pub(crate) rating_key: Arc<str>,
     pub(crate) summary: Arc<str>,
     studio: Option<Arc<str>>,
-    pub(crate) thumb: Option<Arc<str>>,
+    #[serde(default)]
+    pub(crate) thumb: Arc<str>,
     pub(crate) parent_title: Arc<str>,
     parent_rating_key: Arc<str>,
     pub(crate) year: Option<u64>,
@@ -419,7 +393,7 @@ pub(crate) struct Album {
 }
 
 impl Library {
-    fn list(client: &reqwest::blocking::Client, uri: &str) -> Result<Arc<[Self]>> {
+    fn list(client: &reqwest::blocking::Client, uri: &str) -> Result<Box<[Self]>> {
         let uri = format!("{uri}/library/sections/");
         debug!("retrieving libraries from: {uri}");
         Ok(serde_json::from_value(
@@ -435,9 +409,14 @@ impl Library {
         )?)
     }
 
-    fn all(&self, client: &reqwest::blocking::Client, uri: &str) -> Result<Arc<[Album]>> {
+    fn all(
+        &self,
+        client: &reqwest::blocking::Client,
+        base_uri: &str,
+        token: &str,
+    ) -> Result<Box<[Album]>> {
         let key = self.key.as_ref();
-        let uri = format!("{uri}/library/sections/{key}/all");
+        let uri = format!("{base_uri}/library/sections/{key}/all");
 
         debug!("retrieving albums from: {uri}");
         let res = client
@@ -451,8 +430,17 @@ impl Library {
             .ok_or(Error::LibraryMetadataNotFound)?
             .to_owned();
 
-        match serde_json::from_value(res) {
-            Ok(v) => Ok(v),
+        match serde_json::from_value::<Box<[Album]>>(res) {
+            Ok(v) => Ok(v
+                .par_iter()
+                .map(|album| {
+                    let mut album = album.clone();
+                    let thumb = album.thumb.as_ref();
+                    album.thumb = format!("{base_uri}{thumb}{token}").into();
+
+                    album
+                })
+                .collect()),
             Err(e) => {
                 warn!("{e:#?}");
                 Err(e.into())
