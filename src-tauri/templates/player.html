@@ -1,4 +1,5 @@
 <!-- maybe use web components instead of display: None; and swap between them for the inner-html -->
+{% let album = book.book_details.clone() %}
 <div id="player" onclick="openPlayer()">
     <div class="player-header">
         <button onclick="window.event.cancelBubble = true;closePlayer()">
@@ -6,7 +7,7 @@
         </button>
     </div>
     <div class="player-content">
-        <img src="{{ book.thumb }}" alt="{{ book.title }}" />
+        <img src="{{ album.thumb }}" alt="{{ album.title }}" />
 
         <div class="total-progress">10:00:00 / 100:00:00</div>
         <div class="progress-bar">todo chapter progress bar</div>
@@ -15,7 +16,7 @@
         </div>
         <div class="details">
             <span class="chapter">chapter 1</span><br />
-            <span class="title"><sub>{{ book.title }}</sub></span>
+            <span class="title"><sub>{{ album.title }}</sub></span>
         </div>
         <div class="controls">
             <button

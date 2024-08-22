@@ -33,9 +33,11 @@ impl InnerAppState {
     }
 }
 
+pub(crate) const BIN: &str = "store.bin";
+
 pub(crate) fn setup_state(app: &mut App) -> core::result::Result<(), Box<dyn std::error::Error>> {
     info!("Loading stored data");
-    let mut store = StoreBuilder::new("store.bin").build(app.handle().clone());
+    let mut store = StoreBuilder::new(BIN).build(app.handle().clone());
 
     store.load().ok();
     let mut settings = AppSettings::from_store(&mut store);

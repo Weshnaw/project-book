@@ -4,7 +4,7 @@ use tauri::{AppHandle, Emitter, State};
 
 use crate::{
     plex::Album,
-    state::{AppSettings, AppState, Books},
+    state::{AppSettings, AppState, Book, Books},
 };
 
 use super::Result;
@@ -90,12 +90,9 @@ pub(crate) fn plex_download_book(
     let mut state = state.lock()?;
 
     let album = state.settings.plex.get_album(key)?;
-    let mut book = state.books.get_or_insert(album).clone();
-    let books = state.books.clone(); // unsure if I want to clone whole hashmap...
+    state.books.download_book(album, &app)?;
 
-    book.download(&mut state.store)?;
-    books.save(&mut state.store)?;
-    app.emit(UPDATE_DOWNLOADED_EVENT, ()).ok(); // move this to state/settings struct?
+    app.emit(UPDATE_DOWNLOADED_EVENT, ())?;
 
     Ok(())
 }
@@ -108,12 +105,10 @@ pub(crate) fn plex_delete_book(
 ) -> Result<()> {
     debug!("Requesting `plex_delete_book` at {key:?}");
     let mut state = state.lock()?;
-    let mut book = state.books.get_book(key)?.clone();
-    let books = state.books.clone(); // unsure if I want to clone whole hashmap...
 
-    book.remove_download(&mut state.store)?;
-    books.save(&mut state.store)?;
-    app.emit(UPDATE_DOWNLOADED_EVENT, ()).ok(); // move this to state/settings struct?
+    state.books.remove_download(key, &app)?;
+
+    app.emit(UPDATE_DOWNLOADED_EVENT, ())?;
 
     Ok(())
 }
@@ -121,7 +116,7 @@ pub(crate) fn plex_delete_book(
 #[derive(Template)]
 #[template(path = "player.html")]
 struct PlayerTemplate<'a> {
-    book: &'a Album,
+    book: &'a Book,
 }
 
 const UPDATE_PLAYER_EVENT: &str = "update-player";
@@ -139,15 +134,16 @@ pub(crate) fn start_playing(
         todo!("TODO start from chapter")
     } else {
         if let Some(_current) = &state.current_book {
-            app.emit(UPDATE_PLAYER_EVENT, ()).ok();
+            app.emit(UPDATE_PLAYER_EVENT, ())?;
         }
 
-        let album = state.settings.plex.get_album(key)?;
-        // TODO get any progess if previously started
-
+        let album = state.settings.plex.get_album(key)?; // should probly move this whole get current to books
         state.current_book = Some(album.rating_key.clone());
-        let book = PlayerTemplate { book: &album };
-        // TODO save state
+        let book = state.books.get_book_or_insert(album, &app)?;
+        book.save_as_current(&mut state.store)?;
+
+        let book = PlayerTemplate { book: &book };
+
         Ok(book.render()?)
     }
 }
@@ -214,7 +210,7 @@ pub(crate) fn plex_check(state: State<'_, AppState>, app: AppHandle) -> Result<S
             Ok(_) => {
                 info!("Plex signin successful");
                 state.save_settings();
-                app.emit(UPDATE_SETTINGS_EVENT, ()).ok(); // move this to state/settings struct?
+                app.emit(UPDATE_SETTINGS_EVENT, ())?; // move this to state/settings struct?
                 PlexSignedInTemplate.render()
             }
             Err(crate::plex::Error::WaitingOnPin) => {
@@ -241,7 +237,7 @@ pub(crate) fn plex_signout(state: State<'_, AppState>, app: AppHandle) -> Result
     let mut state = state.lock()?;
     state.settings.plex.signout();
     state.save_settings();
-    app.emit(UPDATE_SETTINGS_EVENT, ()).ok(); // move this to state/settings struct?
+    app.emit(UPDATE_SETTINGS_EVENT, ())?; // move this to state/settings struct?
 
     Ok(PlexSignedOutTemplate.render()?)
 }
@@ -290,12 +286,12 @@ pub(crate) fn plex_update_server(
     let mut state = state.lock()?;
 
     if let Some(server) = server {
-        state.settings.plex.select_server(server).ok(); // maybe should error handle on this
+        state.settings.plex.select_server(server)?; // maybe should error handle on this
     } else {
         state.settings.plex.reset_server_selection();
     }
     state.save_settings();
-    app.emit(UPDATE_SETTINGS_EVENT, ()).ok(); // move this to state/settings struct?
+    app.emit(UPDATE_SETTINGS_EVENT, ())?; // move this to state/settings struct?
 
     Ok(())
 }
@@ -330,12 +326,12 @@ pub(crate) fn plex_update_library(
     let mut state = state.lock()?;
 
     if let Some(library) = library {
-        state.settings.plex.select_library(library).ok(); // maybe should error handle on this
+        state.settings.plex.select_library(library)?; // maybe should error handle on this
     } else {
         state.settings.plex.reset_library_selection();
     }
     state.save_settings();
-    app.emit(UPDATE_SETTINGS_EVENT, ()).ok(); // move this to state/settings struct?
+    app.emit(UPDATE_SETTINGS_EVENT, ())?; // move this to state/settings struct?
 
     Ok(())
 }

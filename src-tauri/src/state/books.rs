@@ -6,12 +6,12 @@ use std::{
 use log::debug;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde::{Deserialize, Serialize};
-use tauri::Wry;
-use tauri_plugin_store::Store;
+use tauri::{AppHandle, Wry};
+use tauri_plugin_store::{Store, StoreBuilder};
 
 use crate::plex::Album;
 
-use super::{Error, Result};
+use super::{Error, Result, BIN};
 
 #[derive(Serialize, Deserialize, Clone)]
 enum ReadingState {
@@ -21,7 +21,7 @@ enum ReadingState {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub(crate) struct Book {
-    book_details: Album, // honestly this should probably be a key and the album list should be a hashmap
+    pub(crate) book_details: Album, // honestly this should probably be a key and the album list should be a hashmap
     state: ReadingState,
     progress: f64,
     downloaded: Option<Arc<str>>,
@@ -49,6 +49,17 @@ impl Book {
         book.ok()
     }
 
+    pub(crate) fn save_as_current(&self, store: &mut Store<Wry>) -> Result<()> {
+        debug!("saving {} store", Self::CURRENT_BOOK_STORE);
+        store.insert(
+            Self::CURRENT_BOOK_STORE.into(),
+            serde_json::to_value(self.book_details.rating_key.clone()).unwrap_or_default(),
+        )?;
+        store.save()?;
+
+        Ok(())
+    }
+
     pub(super) fn from_key(store: &Store<Wry>, key: &str) -> Result<Self> {
         let store_key = format!("book:{key}");
         debug!("Loading {store_key} store");
@@ -59,7 +70,7 @@ impl Book {
         }
     }
 
-    // pub(super) fn save(&self, store: &mut Store<Wry>) -> Result<()> {
+    // pub(crate) fn save(&self, store: &mut Store<Wry>) -> Result<()> {
     //     self.__save(store)?;
     //     store.save()?;
 
@@ -71,7 +82,6 @@ impl Book {
         let store_key = format!("book:{key}");
         debug!("saving {store_key} store");
         store.insert(store_key, serde_json::to_value(self).unwrap_or_default())?;
-        store.save()?;
 
         Ok(())
     }
@@ -136,8 +146,9 @@ impl Book {
 
 pub(crate) trait Books {
     fn save(&self, store: &mut Store<Wry>) -> Result<()>;
-    fn get_book(&self, key: &str) -> Result<&Book>;
-    fn get_or_insert(&mut self, album: Album) -> &mut Book;
+    fn get_book_or_insert(&mut self, album: Album, app: &AppHandle) -> Result<Book>;
+    fn download_book(&mut self, album: Album, app: &AppHandle) -> Result<()>;
+    fn remove_download(&mut self, key: &str, app: &AppHandle) -> Result<()>;
 }
 
 impl Books for HashMap<Arc<str>, Book> {
@@ -156,22 +167,53 @@ impl Books for HashMap<Arc<str>, Book> {
         Ok(())
     }
 
-    fn get_book(&self, key: &str) -> Result<&Book> {
-        self.get(key).ok_or(crate::state::Error::NoBookFound)
-    }
-
-    fn get_or_insert(&mut self, album: Album) -> &mut Book {
+    fn get_book_or_insert(&mut self, album: Album, app: &AppHandle) -> Result<Book> {
+        let mut new_key = false;
         let key = album.rating_key.clone();
         let book = match self.entry(key) {
             Entry::Occupied(o) => o.into_mut(),
             Entry::Vacant(v) => {
                 let book = Book::new(album);
-                let book = v.insert(book);
 
-                book
+                new_key = true;
+                v.insert(book)
+            }
+        };
+        let book = book.clone();
+        if new_key {
+            let mut store = StoreBuilder::new(BIN).build(app.clone());
+            self.save(&mut store)?;
+        }
+
+        Ok(book)
+    }
+
+    fn download_book(&mut self, album: Album, app: &AppHandle) -> Result<()> {
+        let key = album.rating_key.clone();
+        let mut new_key = false;
+        let book = match self.entry(key) {
+            Entry::Occupied(o) => o.into_mut(),
+            Entry::Vacant(v) => {
+                let book = Book::new(album);
+
+                new_key = true;
+                v.insert(book)
             }
         };
 
-        book
+        let mut store = StoreBuilder::new(BIN).build(app.clone());
+        book.download(&mut store)?;
+        if new_key {
+            self.save(&mut store)?;
+        }
+
+        Ok(())
+    }
+
+    fn remove_download(&mut self, key: &str, app: &AppHandle) -> Result<()> {
+        let book = self.get_mut(key).ok_or(Error::NoBookFound)?;
+
+        let mut store = StoreBuilder::new(BIN).build(app.clone());
+        book.remove_download(&mut store)
     }
 }

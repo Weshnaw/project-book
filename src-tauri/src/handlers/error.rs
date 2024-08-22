@@ -14,6 +14,7 @@ pub enum Error {
     Plex(plex::Error),
     State(state::Error),
     Template(askama::Error),
+    Tauri(tauri::Error),
     InvalidNumber(ParseIntError),
     FailedToLockState,
 }
