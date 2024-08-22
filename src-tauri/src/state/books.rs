@@ -1,4 +1,7 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    sync::Arc,
+};
 
 use log::debug;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -16,23 +19,23 @@ enum ReadingState {
     Paused,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub(crate) struct Book {
-    book_details: Album,
+    book_details: Album, // honestly this should probably be a key and the album list should be a hashmap
     state: ReadingState,
     progress: f64,
-    downloaded: Option<Box<str>>,
+    downloaded: Option<Arc<str>>,
 }
 
 impl Book {
-    // pub(crate) fn new(album: Album) -> Self {
-    //     Book {
-    //         book_details: album,
-    //         state: ReadingState::Playing,
-    //         progress: 0f64,
-    //         downloaded: None,
-    //     }
-    // }
+    pub(crate) fn new(album: Album) -> Self {
+        Book {
+            book_details: album,
+            state: ReadingState::Playing,
+            progress: 0f64,
+            downloaded: None,
+        }
+    }
 
     const CURRENT_BOOK_STORE: &'static str = "current-book";
     pub(super) fn get_current(store: &Store<Wry>) -> Option<Arc<str>> {
@@ -101,13 +104,43 @@ impl Book {
         books.save(store).ok();
         books
     }
+
+    pub(crate) fn download(&mut self, _store: &mut Store<Wry>) -> Result<()> {
+        todo!("download");
+        // let files = self.book_details.get_file_locations();
+        // if files.len() >= 1 {
+        //   let base_folder = self.book_details.rating_key.as_ref();
+        //   for file in files {
+        //     // download each file to the base_folder
+        //   }
+        //   self.downloaded = Some(base_folder);
+        // } else files.len() == 1 {
+        //   let location = self.book_details.rating_key.as_ref();
+        //   let file = files.first().unwrap();
+        //   // download the file to the location;
+        //   self.downloaded = Some(location);
+        // }
+        // self.save(store)
+    }
+
+    pub(crate) fn remove_download(&mut self, _store: &mut Store<Wry>) -> Result<()> {
+        let _location = self.downloaded.as_ref().ok_or(Error::BookNotDownloaded)?;
+
+        todo!("remove from location");
+
+        // self.downloaded = None;
+
+        // self.save(store)
+    }
 }
 
-pub(super) trait Save {
+pub(crate) trait Books {
     fn save(&self, store: &mut Store<Wry>) -> Result<()>;
+    fn get_book(&self, key: &str) -> Result<&Book>;
+    fn get_or_insert(&mut self, album: Album) -> &mut Book;
 }
 
-impl Save for HashMap<Arc<str>, Book> {
+impl Books for HashMap<Arc<str>, Book> {
     fn save(&self, store: &mut Store<Wry>) -> Result<()> {
         for book in self.values() {
             book.__save(store).ok();
@@ -121,5 +154,24 @@ impl Save for HashMap<Arc<str>, Book> {
         store.save()?;
 
         Ok(())
+    }
+
+    fn get_book(&self, key: &str) -> Result<&Book> {
+        self.get(key).ok_or(crate::state::Error::NoBookFound)
+    }
+
+    fn get_or_insert(&mut self, album: Album) -> &mut Book {
+        let key = album.rating_key.clone();
+        let book = match self.entry(key) {
+            Entry::Occupied(o) => o.into_mut(),
+            Entry::Vacant(v) => {
+                let book = Book::new(album);
+                let book = v.insert(book);
+
+                book
+            }
+        };
+
+        book
     }
 }

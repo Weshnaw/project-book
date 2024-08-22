@@ -7,4 +7,6 @@ pub enum Error {
     StoreEmpty,
     InvalidJson(serde_json::Error),
     StoreFailed(tauri_plugin_store::Error),
+    NoBookFound,
+    BookNotDownloaded,
 }

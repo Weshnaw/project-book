@@ -5,13 +5,14 @@ use log::error;
 use serde_json::json;
 use tauri::ipc::InvokeError;
 
-use crate::plex;
+use crate::{plex, state};
 
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, From, Error, Display)]
 pub enum Error {
     Plex(plex::Error),
+    State(state::Error),
     Template(askama::Error),
     InvalidNumber(ParseIntError),
     FailedToLockState,

@@ -4,7 +4,7 @@ use tauri::{AppHandle, Emitter, State};
 
 use crate::{
     plex::Album,
-    state::{AppSettings, AppState},
+    state::{AppSettings, AppState, Books},
 };
 
 use super::Result;
@@ -79,20 +79,43 @@ pub(crate) fn book(state: State<'_, AppState>, key: &str) -> Result<String> {
     Ok(book.render()?)
 }
 
+const UPDATE_DOWNLOADED_EVENT: &str = "update-downloaded";
 #[tauri::command]
-pub(crate) fn plex_download_book(state: State<'_, AppState>, key: &str) -> Result<()> {
+pub(crate) fn plex_download_book(
+    state: State<'_, AppState>,
+    key: &str,
+    app: AppHandle,
+) -> Result<()> {
     debug!("Requesting `plex_download_book` at {key:?}");
-    let mut _state = state.lock()?;
+    let mut state = state.lock()?;
 
-    todo!()
+    let album = state.settings.plex.get_album(key)?;
+    let mut book = state.books.get_or_insert(album).clone();
+    let books = state.books.clone(); // unsure if I want to clone whole hashmap...
+
+    book.download(&mut state.store)?;
+    books.save(&mut state.store)?;
+    app.emit(UPDATE_DOWNLOADED_EVENT, ()).ok(); // move this to state/settings struct?
+
+    Ok(())
 }
 
 #[tauri::command]
-pub(crate) fn plex_delete_book(state: State<'_, AppState>, key: &str) -> Result<()> {
+pub(crate) fn plex_delete_book(
+    state: State<'_, AppState>,
+    key: &str,
+    app: AppHandle,
+) -> Result<()> {
     debug!("Requesting `plex_delete_book` at {key:?}");
-    let mut _state = state.lock()?;
+    let mut state = state.lock()?;
+    let mut book = state.books.get_book(key)?.clone();
+    let books = state.books.clone(); // unsure if I want to clone whole hashmap...
 
-    todo!()
+    book.remove_download(&mut state.store)?;
+    books.save(&mut state.store)?;
+    app.emit(UPDATE_DOWNLOADED_EVENT, ()).ok(); // move this to state/settings struct?
+
+    Ok(())
 }
 
 #[derive(Template)]
