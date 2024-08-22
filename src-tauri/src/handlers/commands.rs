@@ -4,7 +4,7 @@ use tauri::{AppHandle, Emitter, State};
 
 use crate::{
     plex::Album,
-    state::{AppSettings, AppState, Book},
+    state::{AppSettings, AppState},
 };
 
 use super::Result;
@@ -79,10 +79,26 @@ pub(crate) fn book(state: State<'_, AppState>, key: &str) -> Result<String> {
     Ok(book.render()?)
 }
 
+#[tauri::command]
+pub(crate) fn plex_download_book(state: State<'_, AppState>, key: &str) -> Result<()> {
+    debug!("Requesting `plex_download_book` at {key:?}");
+    let mut _state = state.lock()?;
+
+    todo!()
+}
+
+#[tauri::command]
+pub(crate) fn plex_delete_book(state: State<'_, AppState>, key: &str) -> Result<()> {
+    debug!("Requesting `plex_delete_book` at {key:?}");
+    let mut _state = state.lock()?;
+
+    todo!()
+}
+
 #[derive(Template)]
 #[template(path = "player.html")]
-struct PlayerTemplate {
-    book: Album,
+struct PlayerTemplate<'a> {
+    book: &'a Album,
 }
 
 const UPDATE_PLAYER_EVENT: &str = "update-player";
@@ -99,17 +115,15 @@ pub(crate) fn start_playing(
     if let Some(_chapter) = chapter {
         todo!("TODO start from chapter")
     } else {
-        if let Some(_current) = state.current_book.clone() {
+        if let Some(_current) = &state.current_book {
             app.emit(UPDATE_PLAYER_EVENT, ()).ok();
         }
 
         let album = state.settings.plex.get_album(key)?;
         // TODO get any progess if previously started
 
-        let book = PlayerTemplate {
-            book: album.clone(),
-        };
-        state.current_book = Some(Book::new(album));
+        state.current_book = Some(album.rating_key.clone());
+        let book = PlayerTemplate { book: &album };
         // TODO save state
         Ok(book.render()?)
     }

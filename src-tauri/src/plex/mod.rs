@@ -29,7 +29,7 @@ pub(crate) struct Plex {
     #[serde(skip_serializing)] // Im 50/50 on refreshing at startup
     libraries: Option<Box<[Library]>>, // TODO might be better as hashmap
     #[serde(skip_serializing)] // Im 50/50 on refreshing at startup
-    albums: Option<Box<[Album]>>, // TODO might be better as hashmap
+    albums: Option<Arc<[Album]>>, // TODO might be better as hashmap
     #[serde(skip_serializing)]
     #[serde(default = "default_session")]
     session_token: Box<str>,
@@ -414,7 +414,7 @@ impl Library {
         client: &reqwest::blocking::Client,
         base_uri: &str,
         token: &str,
-    ) -> Result<Box<[Album]>> {
+    ) -> Result<Arc<[Album]>> {
         let key = self.key.as_ref();
         let uri = format!("{base_uri}/library/sections/{key}/all");
 
@@ -430,7 +430,7 @@ impl Library {
             .ok_or(Error::LibraryMetadataNotFound)?
             .to_owned();
 
-        match serde_json::from_value::<Box<[Album]>>(res) {
+        match serde_json::from_value::<Arc<[Album]>>(res) {
             Ok(v) => Ok(v
                 .par_iter()
                 .map(|album| {
