@@ -1,10 +1,13 @@
+use std::sync::MutexGuard;
+
 use askama::Template;
 use log::{debug, info, warn};
 use tauri::{AppHandle, Emitter, State};
 
 use crate::{
     plex::Album,
-    state::{AppSettings, AppState, Book, Books},
+    state::{AppSettings, AppState, Book, Books, InnerAppState, ReadingState},
+    Error,
 };
 
 use super::Result;
@@ -90,7 +93,13 @@ pub(crate) fn plex_download_book(
     let mut state = state.lock()?;
 
     let album = state.settings.plex.get_album(key)?;
-    state.books.download_book(album, &app)?;
+    let new_book = state.books.download_book(album)?;
+
+    if new_book {
+        state.save_books();
+    } else {
+        state.save_book(key);
+    }
 
     app.emit(UPDATE_DOWNLOADED_EVENT, ())?;
 
@@ -106,7 +115,8 @@ pub(crate) fn plex_delete_book(
     debug!("Requesting `plex_delete_book` at {key:?}");
     let mut state = state.lock()?;
 
-    state.books.remove_download(key, &app)?;
+    state.books.remove_download(key)?;
+    state.save_book(key);
 
     app.emit(UPDATE_DOWNLOADED_EVENT, ())?;
 
@@ -120,6 +130,25 @@ struct PlayerTemplate<'a> {
 }
 
 const UPDATE_PLAYER_EVENT: &str = "update-player";
+
+fn create_player(mut state: MutexGuard<InnerAppState>, key: &str) -> Result<String> {
+    let album = state.settings.plex.get_album(key)?;
+    state.current_book = Some(album.rating_key.clone());
+    let (book, new_book) = state.books.get_book_or_insert(album)?;
+    book.state = ReadingState::Playing;
+
+    let book = PlayerTemplate {
+        book: &book.clone(),
+    };
+
+    state.save_current_book();
+    if new_book {
+        state.save_books();
+    }
+
+    Ok(book.render()?)
+}
+
 #[tauri::command]
 pub(crate) fn start_playing(
     state: State<'_, AppState>,
@@ -130,21 +159,29 @@ pub(crate) fn start_playing(
 ) -> Result<String> {
     debug!("Requesting `book` at {key:?}");
     let mut state = state.lock()?;
-    if let Some(_chapter) = chapter {
-        todo!("TODO start from chapter")
-    } else {
-        if let Some(_current) = &state.current_book {
+    let _chapter = chapter.unwrap_or("0");
+
+    if let Some(current) = &state.current_book.clone() {
+        debug!("Requesting `book` at {key:?}");
+        if current.as_ref() != key {
+            if let Some(old) = state.books.get_mut(current) {
+                old.state = ReadingState::Paused; // maybe should be something like UnLoaded
+            }
             app.emit(UPDATE_PLAYER_EVENT, ())?;
+            create_player(state, key)
+        } else {
+            if let Some(current) = state.books.get_mut(current) {
+                current.state = match current.state {
+                    ReadingState::Playing => ReadingState::Paused,
+                    _ => ReadingState::Playing,
+                };
+            }
+            app.emit("toggle-playing", ())?;
+
+            Err(Error::NoChange) // unsure on if this should be Error or just an empty string...
         }
-
-        let album = state.settings.plex.get_album(key)?; // should probly move this whole get current to books
-        state.current_book = Some(album.rating_key.clone());
-        let book = state.books.get_book_or_insert(album, &app)?;
-        book.save_as_current(&mut state.store)?;
-
-        let book = PlayerTemplate { book: &book };
-
-        Ok(book.render()?)
+    } else {
+        create_player(state, key)
     }
 }
 

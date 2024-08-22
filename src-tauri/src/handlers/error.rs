@@ -17,6 +17,7 @@ pub enum Error {
     Tauri(tauri::Error),
     InvalidNumber(ParseIntError),
     FailedToLockState,
+    NoChange,
 }
 
 impl From<Error> for InvokeError {

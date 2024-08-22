@@ -16,7 +16,12 @@ const patchedSend = async function (this: any, params: any) {
   // Set response
   debug(`HTMX tauri invoke ${this.command} with ${JSON.stringify(params)}`);
   const query = new URLSearchParams(params);
-  this.response = await invoke(this.command, Object.fromEntries(query));
+  try {
+    this.response = await invoke(this.command, Object.fromEntries(query));
+  } catch (error) {
+    console.warn(error);
+    this.response = "";
+  }
   this.readyState = XMLHttpRequest.DONE;
   this.status = 200;
   this.statusText = "OK";

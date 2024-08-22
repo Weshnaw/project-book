@@ -31,6 +31,26 @@ impl InnerAppState {
     pub(crate) fn save_settings(&mut self) {
         self.settings.save(&mut self.store)
     }
+
+    pub(crate) fn save_books(&mut self) {
+        self.books.save(&mut self.store).ok();
+    }
+
+    pub(crate) fn save_book(&mut self, key: &str) {
+        if let Some(book) = self.books.get(key) {
+            book.save(&mut self.store).ok();
+        }
+    }
+
+    pub(crate) fn save_current_book(&mut self) {
+        self.store
+            .insert(
+                Book::CURRENT_BOOK_STORE.into(),
+                serde_json::to_value(self.current_book.clone()).unwrap_or_default(),
+            )
+            .ok();
+        self.store.save().ok();
+    }
 }
 
 pub(crate) const BIN: &str = "store.bin";
@@ -41,7 +61,7 @@ pub(crate) fn setup_state(app: &mut App) -> core::result::Result<(), Box<dyn std
 
     store.load().ok();
     let mut settings = AppSettings::from_store(&mut store);
-    let current_book = Book::get_current(&store);
+    let current_book = None; // Book::get_current(&store); // TODO create player on startup
     let books = Book::get_all_books(&mut store);
 
     settings.plex.refresh_all_unchecked(); // Im 50/50 on refreshing at startup
