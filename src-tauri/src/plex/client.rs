@@ -3,10 +3,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use serde_json::Value;
 
 use super::{
-    resources::{
-        connections::{PlexConnections, PlexResource},
-        library::{Album, Library},
-    },
+    resources::{Album, Library, PlexConnections, PlexResource},
     Error, PlexPin, Result,
 };
 

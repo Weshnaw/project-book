@@ -1,2 +1,7 @@
-pub(super) mod connections;
-pub(super) mod library;
+mod album;
+mod connections;
+mod library;
+
+pub(super) use album::*;
+pub(super) use connections::*;
+pub(super) use library::*;

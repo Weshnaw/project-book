@@ -14,10 +14,7 @@ use uuid::Uuid;
 
 use super::{
     client::BoxedClient,
-    resources::{
-        connections::PlexResource,
-        library::{Album, Library},
-    },
+    resources::{Album, Library, PlexResource},
     Error, Result,
 };
 
