@@ -64,7 +64,11 @@ pub(crate) fn library_pagination(state: State<'_, AppState>, current: &str) -> R
             .par_iter()
             .map(|album| BookTemplate {
                 author: album.parent_ref(),
-                thumb: album.thumb(),
+                thumb: state
+                    .settings
+                    .plex
+                    .authenticated_thumb(album.thumb_ref())
+                    .unwrap_or_default(),
                 title: album.title_ref(),
                 key: album.key_ref(),
                 summary: album.summary_ref(),
@@ -95,7 +99,11 @@ pub(crate) fn book(state: State<'_, AppState>, key: &str) -> Result<String> {
     let album = state.settings.plex.get_album(key)?;
     let book = BookTemplate {
         author: album.parent_ref(),
-        thumb: album.thumb(),
+        thumb: state
+            .settings
+            .plex
+            .authenticated_thumb(album.thumb_ref())
+            .unwrap_or_default(),
         title: album.title_ref(),
         key: album.key_ref(),
         summary: album.summary_ref(),
@@ -115,8 +123,8 @@ pub(crate) fn plex_download_book(
     debug!("Requesting `plex_download_book` at {key:?}");
     let mut state = state.lock()?;
 
-    let album = state.settings.plex.get_album(key)?;
-    let new_book = state.books.download_book(album.key_clone())?;
+    let album = state.settings.plex.get_album(key)?.key_clone();
+    let new_book = state.books.download_book(album)?;
 
     if new_book {
         state.save_books();
@@ -156,20 +164,25 @@ struct PlayerTemplate<'a> {
 const UPDATE_PLAYER_EVENT: &str = "update-player";
 
 fn create_player(mut state: MutexGuard<InnerAppState>, key: &str) -> Result<String> {
-    let album = state.settings.plex.get_album(key)?;
-    state.current_book = Some(album.key_clone());
-    let (book, new_book) = state.books.get_book_or_insert(album.key_clone())?;
+    let album = state.settings.plex.get_album(key)?.key_clone();
+    state.current_book = Some(album.clone());
+    let (book, new_book) = state.books.get_book_or_insert(album)?;
     book.state = ReadingState::Playing;
-
-    let book = PlayerTemplate {
-        thumb: &album.thumb(),
-        title: album.title_ref(),
-    };
 
     state.save_current_book();
     if new_book {
         state.save_books();
     }
+
+    let album = state.settings.plex.get_album(key)?;
+    let book = PlayerTemplate {
+        thumb: &state
+            .settings
+            .plex
+            .authenticated_thumb(album.thumb_ref())
+            .unwrap_or_default(),
+        title: album.title_ref(),
+    };
 
     Ok(book.render()?)
 }

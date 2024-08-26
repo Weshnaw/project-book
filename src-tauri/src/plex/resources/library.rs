@@ -27,7 +27,7 @@ impl Library {
 
 #[derive(Deserialize, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct AlbumData {
+pub(crate) struct Album {
     title: Arc<str>,
     rating_key: Arc<str>,
     summary: Arc<str>,
@@ -39,61 +39,38 @@ pub(crate) struct AlbumData {
     index: u64,
 }
 
-impl AlbumData {
+impl Album {
     pub(crate) fn into_key_val(self) -> (Arc<str>, Self) {
         (self.rating_key.clone(), self)
     }
-}
-
-pub(crate) struct Album {
-    data: AlbumData,
-    uri: Arc<str>,
-    token: Arc<str>,
-}
-
-impl Album {
-    // fn get_files(&self) -> Result<Box<[&str]>> {
-    //     Ok(Box::new([]))
-    // }
-
-    pub(crate) fn new(data: AlbumData, uri: Arc<str>, token: Arc<str>) -> Self {
-        Self { data, uri, token }
-    }
 
     pub(crate) fn key_ref(&self) -> &str {
-        self.data.rating_key.as_ref()
+        self.rating_key.as_ref()
     }
 
     pub(crate) fn parent_ref(&self) -> &str {
-        self.data
-            .parent_title
+        self.parent_title
             .as_ref()
-            .map(|parent| parent.as_ref())
+            .map(|val| val.as_ref())
             .unwrap_or_default()
     }
 
     pub(crate) fn summary_ref(&self) -> &str {
-        self.data.summary.as_ref()
+        self.summary.as_ref()
     }
 
     pub(crate) fn title_ref(&self) -> &str {
-        self.data.title.as_ref()
+        self.title.as_ref()
     }
 
-    pub(crate) fn thumb(&self) -> String {
-        self.data
-            .thumb
+    pub(crate) fn thumb_ref(&self) -> &str {
+        self.thumb
             .as_ref()
-            .map(|thumb| {
-                let base_uri = self.uri.as_ref();
-                let token = self.token.as_ref();
-                let token = format!("?X-Plex-Token={token}");
-                format!("{base_uri}{thumb}{token}")
-            })
+            .map(|val| val.as_ref())
             .unwrap_or_default()
     }
 
     pub(crate) fn key_clone(&self) -> Arc<str> {
-        self.data.rating_key.clone()
+        self.rating_key.clone()
     }
 }

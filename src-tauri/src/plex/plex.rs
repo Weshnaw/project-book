@@ -12,13 +12,11 @@ use reqwest::header::{HeaderMap, HeaderValue};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::plex::resources::library::Album;
-
 use super::{
     client::BoxedClient,
     resources::{
         connections::PlexResource,
-        library::{AlbumData, Library},
+        library::{Album, Library},
     },
     Error, Result,
 };
@@ -60,7 +58,7 @@ pub(crate) struct Plex {
     // Generated on initialization, may move these to a local store for caching
     resources: HashMap<Arc<str>, PlexResource>,
     libraries: HashMap<Arc<str>, Library>,
-    albums: Arc<HashMap<Arc<str>, AlbumData>>,
+    albums: Arc<HashMap<Arc<str>, Album>>,
 }
 
 impl Plex {
@@ -154,53 +152,16 @@ impl Plex {
 
         Ok(())
     }
-    pub(crate) fn get_albums(&self) -> Result<Box<[Album]>> {
+    pub(crate) fn get_albums(&self) -> Result<Box<[&Album]>> {
         debug!("get albums");
 
-        let uri = self
-            .data
-            .selected_connection
-            .as_ref()
-            .ok_or(Error::NoServerSelected)?
-            .uri
-            .clone();
-
-        let auth = self
-            .data
-            .user_token
-            .as_ref()
-            .ok_or(Error::NotAuthenticated)?
-            .clone();
-
-        Ok(self
-            .albums
-            .par_iter()
-            .map(|(_, album)| Album::new(album.clone(), uri.clone(), auth.clone()))
-            .collect())
+        Ok(self.albums.values().collect())
     }
 
-    pub(crate) fn get_album(&self, key: &str) -> Result<Album> {
+    pub(crate) fn get_album(&self, key: &str) -> Result<&Album> {
         debug!("get album: {key}");
 
-        let uri = self
-            .data
-            .selected_connection
-            .as_ref()
-            .ok_or(Error::NoServerSelected)?
-            .uri
-            .clone();
-
-        let auth = self
-            .data
-            .user_token
-            .as_ref()
-            .ok_or(Error::NotAuthenticated)?
-            .clone();
-
-        self.albums
-            .get(key)
-            .map(|album| Album::new(album.clone(), uri.clone(), auth.clone()))
-            .ok_or(Error::NoAlbumFound)
+        self.albums.get(key).ok_or(Error::NoAlbumFound)
     }
 
     pub(crate) fn signout(&mut self) -> Result<()> {
@@ -214,6 +175,23 @@ impl Plex {
 
     pub(crate) fn has_user(&self) -> bool {
         self.data.user_token.is_some()
+    }
+
+    pub(crate) fn authenticated_thumb(&self, thumb: &str) -> Result<String> {
+        let base_uri = self
+            .data
+            .selected_connection
+            .as_ref()
+            .ok_or(Error::NoServerSelected)?
+            .uri
+            .as_ref();
+        let token = self
+            .data
+            .user_token
+            .as_ref()
+            .ok_or(Error::NotAuthenticated)?;
+        let token = format!("?X-Plex-Token={token}");
+        Ok(format!("{base_uri}{thumb}{token}"))
     }
 
     pub(crate) fn get_selected_server(&self) -> Option<&str> {
@@ -410,7 +388,7 @@ impl PlexData {
             .collect())
     }
 
-    fn get_albums(&self, client: &BoxedClient) -> Result<HashMap<Arc<str>, AlbumData>> {
+    fn get_albums(&self, client: &BoxedClient) -> Result<HashMap<Arc<str>, Album>> {
         debug!("refreshing albums");
         let server = self
             .selected_connection

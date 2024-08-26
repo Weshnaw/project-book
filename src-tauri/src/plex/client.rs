@@ -5,7 +5,7 @@ use serde_json::Value;
 use super::{
     resources::{
         connections::{PlexConnections, PlexResource},
-        library::{AlbumData, Library},
+        library::{Album, Library},
     },
     Error, PlexPin, Result,
 };
@@ -17,7 +17,7 @@ pub(super) trait PlexClient {
         &self,
         resource: &'b PlexResource,
     ) -> Result<&'b PlexConnections>;
-    fn albums(&self, key: &str, uri: &str) -> Result<Vec<AlbumData>>;
+    fn albums(&self, key: &str, uri: &str) -> Result<Vec<Album>>;
     fn libraries(&self, uri: &str) -> Result<Vec<Library>>;
     fn resources(&self) -> Result<Vec<PlexResource>>;
     fn check_pin(&self, id: u64) -> Result<PlexPin>;
@@ -58,7 +58,7 @@ impl PlexClient for reqwest::blocking::Client {
         )?)
     }
 
-    fn albums(&self, uri: &str, key: &str) -> Result<Vec<AlbumData>> {
+    fn albums(&self, uri: &str, key: &str) -> Result<Vec<Album>> {
         let uri = format!("{uri}/library/sections/{key}/all");
         debug!("Retrieving albums using {uri}");
 
@@ -117,7 +117,7 @@ pub(crate) mod mock {
             todo!()
         }
 
-        fn albums(&self, _key: &str, _uri: &str) -> Result<Vec<AlbumData>> {
+        fn albums(&self, _key: &str, _uri: &str) -> Result<Vec<Album>> {
             todo!()
         }
 
