@@ -1,3 +1,5 @@
+use std::sync::PoisonError;
+
 use derive_more::{Display, Error, From};
 
 pub type Result<T> = core::result::Result<T, Error>;
@@ -22,4 +24,16 @@ pub enum Error {
     NoAlbumsFound,
     NoLibrariesFound,
     NoThumbnailFound,
+    FailedToLockState,
+}
+
+impl<T> From<PoisonError<T>> for Error {
+    fn from(_err: PoisonError<T>) -> Self {
+        Self::FailedToLockState
+    }
+}
+impl<T> From<&PoisonError<T>> for Error {
+    fn from(_err: &PoisonError<T>) -> Self {
+        Self::FailedToLockState
+    }
 }

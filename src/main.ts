@@ -101,9 +101,24 @@ listen("update-player", (_) => {
   await invoke("plex_download_book", {
     key: key,
   });
+
+  let downloadbtn: HTMLElement | null = document.querySelector("#download-btn");
+  if (downloadbtn) {
+    downloadbtn.onclick = () => {
+      (<any>window).delete(key);
+    };
+    downloadbtn.textContent = "Delete";
+  }
 };
 (<any>window).delete = async (key: String) => {
   debug(`delete triggered with ${key}`);
+  let downloadbtn: HTMLElement | null = document.querySelector("#download-btn");
+  if (downloadbtn) {
+    downloadbtn.onclick = () => {
+      (<any>window).download(key);
+    };
+    downloadbtn.textContent = "Download";
+  }
   await invoke("plex_delete_book", {
     key: key,
   });

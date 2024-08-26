@@ -2,14 +2,14 @@
 <div
     class="library-item"
     hx-post="command:book"
-    hx-vals='{"key": "{{ book.rating_key }}"}'
+    hx-vals='{"key": "{{ book.key }}"}'
     hx-target="body"
     hx-swap="beforeend"
 >
     <book-card
         thumb="{{ book.thumb }}"
         title="{{ book.title }}"
-        author="{{ book.parent_title }}"
+        author="{{ book.author }}"
     ></book-card>
 </div>
 {% endfor %} {% if next != 0 %}

@@ -60,11 +60,9 @@ pub(crate) fn setup_state(app: &mut App) -> core::result::Result<(), Box<dyn std
     let mut store = StoreBuilder::new(BIN).build(app.handle().clone());
 
     store.load().ok();
-    let mut settings = AppSettings::from_store(&mut store);
+    let settings = AppSettings::from_store(&mut store);
     let current_book = None; // Book::get_current(&store); // TODO create player on startup
     let books = Book::get_all_books(&mut store);
-
-    settings.plex.refresh_all_unchecked(); // Im 50/50 on refreshing at startup
 
     app.manage(Mutex::new(InnerAppState {
         settings,

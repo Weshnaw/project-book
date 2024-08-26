@@ -3,25 +3,27 @@
         <button onclick="closeModal()">Close</button>
     </div>
     <div class="modal-content">
-        <img src="{{ book.thumb }}" alt="{{ book.title }}" /><br />
+        <img src="{{ thumb }}" alt="{{ title }}" /><br />
 
         <span class="progress">todo progress</span><br />
         {% if downloaded %}
-        <button onclick='delete("{{ book.rating_key }}")'>delete</button>
+        <button id="download-btn" onclick='delete("{{ key }}")'>delete</button>
         {% else %}
-        <button onclick='download("{{ book.rating_key }}")'>download</button>
+        <button id="download-btn" onclick='download("{{ key }}")'>
+            download
+        </button>
         {% endif %}
-        <span class="title">{{ book.title }}</span
+        <span class="title">{{ title }}</span
         ><button
             hx-post="command:start_playing"
-            hx-vals='{"key": "{{ book.rating_key }}" }'
+            hx-vals='{"key": "{{ key }}" }'
             hx-target="body"
             hx-swap="beforeend"
         >
             play</button
         ><br />
-        <span class="author">{{ book.parent_title }}</span><br />
-        <div class="description">{{ book.summary }}</div>
+        <span class="author">{{ author }}</span><br />
+        <div class="description">{{ summary }}</div>
         <br />
         <div class="chapters">
             Chapters

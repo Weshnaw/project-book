@@ -9,8 +9,6 @@ use serde::{Deserialize, Serialize};
 use tauri::Wry;
 use tauri_plugin_store::Store;
 
-use crate::plex::Album;
-
 use super::{Error, Result};
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -21,16 +19,16 @@ pub(crate) enum ReadingState {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub(crate) struct Book {
-    pub(crate) book_details: Album, // honestly this should probably be a key and the album list should be a hashmap
+    pub(crate) album_key: Arc<str>,
     pub(crate) state: ReadingState,
     pub(crate) progress: f64,
     downloaded: Option<Arc<str>>,
 }
 
 impl Book {
-    pub(crate) fn new(album: Album) -> Self {
+    pub(crate) fn new(album_key: Arc<str>) -> Self {
         Book {
-            book_details: album,
+            album_key,
             state: ReadingState::Paused,
             progress: 0f64,
             downloaded: None,
@@ -67,7 +65,7 @@ impl Book {
     }
 
     fn __save(&self, store: &mut Store<Wry>) -> Result<()> {
-        let key = self.book_details.rating_key.as_ref();
+        let key = self.album_key.as_ref();
         let store_key = format!("book:{key}");
         debug!("saving {store_key} store");
         store.insert(store_key, serde_json::to_value(self).unwrap_or_default())?;
@@ -105,38 +103,41 @@ impl Book {
     }
 
     pub(crate) fn download(&mut self) -> Result<()> {
-        todo!("download");
-        // let files = self.book_details.get_file_locations();
-        // if files.len() >= 1 {
-        //   let base_folder = self.book_details.rating_key.as_ref();
-        //   for file in files {
-        //     // download each file to the base_folder
-        //   }
-        //   self.downloaded = Some(base_folder);
-        // } else files.len() == 1 {
-        //   let location = self.book_details.rating_key.as_ref();
-        //   let file = files.first().unwrap();
-        //   // download the file to the location;
-        //   self.downloaded = Some(location);
-        // }
-        // self.save(store)
+        let files = vec!["todo"]; // TODO get files
+
+        match files.len().cmp(&1usize) {
+            std::cmp::Ordering::Less => {
+                // throw error
+            }
+            std::cmp::Ordering::Equal => {
+                let location = self.album_key.clone();
+                let _file = &files.first().unwrap();
+                // TODO: download the file to the location;
+                self.downloaded = Some(location);
+            }
+            std::cmp::Ordering::Greater => {
+                let base_folder = self.album_key.clone();
+                for _file in files {
+                    // TODO: download each file to the base_folder
+                }
+                self.downloaded = Some(base_folder);
+            }
+        }
+        Ok(())
     }
 
     pub(crate) fn remove_download(&mut self) -> Result<()> {
         let _location = self.downloaded.as_ref().ok_or(Error::BookNotDownloaded)?;
-
-        todo!("remove from location");
-
-        // self.downloaded = None;
-
-        // self.save(store)
+        // TODO: delete location
+        self.downloaded = None;
+        Ok(())
     }
 }
 
 pub(crate) trait Books {
     fn save(&self, store: &mut Store<Wry>) -> Result<()>;
-    fn get_book_or_insert(&mut self, album: Album) -> Result<(&mut Book, bool)>;
-    fn download_book(&mut self, album: Album) -> Result<bool>;
+    fn get_book_or_insert(&mut self, album_key: Arc<str>) -> Result<(&mut Book, bool)>;
+    fn download_book(&mut self, album_key: Arc<str>) -> Result<bool>;
     fn remove_download(&mut self, key: &str) -> Result<()>;
 }
 
@@ -156,13 +157,12 @@ impl Books for HashMap<Arc<str>, Book> {
         Ok(())
     }
 
-    fn get_book_or_insert(&mut self, album: Album) -> Result<(&mut Book, bool)> {
+    fn get_book_or_insert(&mut self, album_key: Arc<str>) -> Result<(&mut Book, bool)> {
         let mut new_key = false;
-        let key = album.rating_key.clone();
-        let book = match self.entry(key) {
+        let book = match self.entry(album_key.clone()) {
             Entry::Occupied(o) => o.into_mut(),
             Entry::Vacant(v) => {
-                let book = Book::new(album);
+                let book = Book::new(album_key);
 
                 new_key = true;
                 v.insert(book)
@@ -172,8 +172,8 @@ impl Books for HashMap<Arc<str>, Book> {
         Ok((book, new_key))
     }
 
-    fn download_book(&mut self, album: Album) -> Result<bool> {
-        let (book, new_key) = self.get_book_or_insert(album)?;
+    fn download_book(&mut self, album_key: Arc<str>) -> Result<bool> {
+        let (book, new_key) = self.get_book_or_insert(album_key)?;
 
         book.download()?;
         Ok(new_key)

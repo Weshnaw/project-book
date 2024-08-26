@@ -2,11 +2,11 @@ use std::sync::MutexGuard;
 
 use askama::Template;
 use log::{debug, info, warn};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use tauri::{AppHandle, Emitter, State};
 
 use crate::{
-    plex::Album,
-    state::{AppSettings, AppState, Book, Books, InnerAppState, ReadingState},
+    state::{AppSettings, AppState, Books, InnerAppState, ReadingState},
     Error,
 };
 
@@ -39,7 +39,7 @@ pub(crate) fn library() -> Result<String> {
 #[derive(Template)]
 #[template(path = "library/pagination.html")]
 struct LibraryPaginationTemplate<'a> {
-    books: &'a [Album],
+    books: Box<[BookTemplate<'a>]>,
     next: usize,
 }
 
@@ -50,23 +50,41 @@ pub(crate) fn library_pagination(state: State<'_, AppState>, current: &str) -> R
     let state = state.lock()?;
     let page_size = 12; // more likely to fit evenly into the display
 
-    let books = &state.settings.plex.get_albums()?[current..(current + page_size)];
+    let albums = state.settings.plex.get_albums()?;
+    let albums = &albums[current..(current + page_size).min(albums.len())];
 
-    let next = if books.len() == page_size {
+    let next = if albums.len() == page_size {
         current + page_size
     } else {
         0
     };
 
-    let library = LibraryPaginationTemplate { books, next };
+    let library = LibraryPaginationTemplate {
+        books: albums
+            .par_iter()
+            .map(|album| BookTemplate {
+                author: album.parent_ref(),
+                thumb: album.thumb(),
+                title: album.title_ref(),
+                key: album.key_ref(),
+                summary: album.summary_ref(),
+                downloaded: false, // todo check against downloaded books in state
+            })
+            .collect(),
+        next,
+    };
 
     Ok(library.render()?)
 }
 
 #[derive(Template)]
 #[template(path = "library/book.html")]
-struct BookTemplate {
-    book: Album,
+struct BookTemplate<'a> {
+    author: &'a str,
+    thumb: String,
+    title: &'a str,
+    key: &'a str,
+    summary: &'a str,
     downloaded: bool,
 }
 
@@ -74,8 +92,13 @@ struct BookTemplate {
 pub(crate) fn book(state: State<'_, AppState>, key: &str) -> Result<String> {
     debug!("Requesting `book` at {key:?}");
     let state = state.lock()?;
+    let album = state.settings.plex.get_album(key)?;
     let book = BookTemplate {
-        book: state.settings.plex.get_album(key)?,
+        author: album.parent_ref(),
+        thumb: album.thumb(),
+        title: album.title_ref(),
+        key: album.key_ref(),
+        summary: album.summary_ref(),
         downloaded: false, // todo check against downloaded books in state
     };
 
@@ -93,7 +116,7 @@ pub(crate) fn plex_download_book(
     let mut state = state.lock()?;
 
     let album = state.settings.plex.get_album(key)?;
-    let new_book = state.books.download_book(album)?;
+    let new_book = state.books.download_book(album.key_clone())?;
 
     if new_book {
         state.save_books();
@@ -126,19 +149,21 @@ pub(crate) fn plex_delete_book(
 #[derive(Template)]
 #[template(path = "player.html")]
 struct PlayerTemplate<'a> {
-    book: &'a Book,
+    thumb: &'a str,
+    title: &'a str,
 }
 
 const UPDATE_PLAYER_EVENT: &str = "update-player";
 
 fn create_player(mut state: MutexGuard<InnerAppState>, key: &str) -> Result<String> {
     let album = state.settings.plex.get_album(key)?;
-    state.current_book = Some(album.rating_key.clone());
-    let (book, new_book) = state.books.get_book_or_insert(album)?;
+    state.current_book = Some(album.key_clone());
+    let (book, new_book) = state.books.get_book_or_insert(album.key_clone())?;
     book.state = ReadingState::Playing;
 
     let book = PlayerTemplate {
-        book: &book.clone(),
+        thumb: &album.thumb(),
+        title: album.title_ref(),
     };
 
     state.save_current_book();
@@ -232,7 +257,7 @@ pub(crate) fn plex_signin(state: State<'_, AppState>) -> Result<String> {
     debug!("Requesting `plex_signin`");
     let mut state = state.lock()?;
     let pin = state.settings.plex.create_login_pin()?;
-    let pin_html = PinTemplate { pin: pin.get_pin() };
+    let pin_html = PinTemplate { pin: pin.pin_ref() };
     let pin_html = pin_html.render()?;
     state.plex_pin = Some(pin); // todo
     Ok(pin_html)
@@ -252,7 +277,7 @@ pub(crate) fn plex_check(state: State<'_, AppState>, app: AppHandle) -> Result<S
             }
             Err(crate::plex::Error::WaitingOnPin) => {
                 debug!("Waiting for plex pin complete or retry");
-                PinTemplate { pin: pin.get_pin() }.render()
+                PinTemplate { pin: pin.pin_ref() }.render()
             }
             Err(_) => {
                 warn!("Plex pin unsuccessful");
@@ -272,7 +297,7 @@ pub(crate) fn plex_check(state: State<'_, AppState>, app: AppHandle) -> Result<S
 pub(crate) fn plex_signout(state: State<'_, AppState>, app: AppHandle) -> Result<String> {
     debug!("Requesting `plex_signout`");
     let mut state = state.lock()?;
-    state.settings.plex.signout();
+    state.settings.plex.signout()?;
     state.save_settings();
     app.emit(UPDATE_SETTINGS_EVENT, ())?; // move this to state/settings struct?
 
@@ -286,7 +311,7 @@ pub(crate) fn plex(state: State<'_, AppState>) -> Result<String> {
     let plex = if state.settings.plex.has_user() {
         PlexSignedInTemplate.render()
     } else if let Some(pin) = &state.plex_pin {
-        PinTemplate { pin: pin.get_pin() }.render()
+        PinTemplate { pin: pin.pin_ref() }.render()
     } else {
         PlexSignedOutTemplate.render()
     };
@@ -305,7 +330,7 @@ pub(crate) fn plex_server(state: State<'_, AppState>) -> Result<String> {
     debug!("Requesting `plex_server`");
     let state = state.lock()?;
 
-    let servers = state.settings.plex.get_servers().unwrap_or([].into());
+    let servers = state.settings.plex.get_servers();
     Ok(PlexServerTemplate {
         urls: servers,
         selected: state.settings.plex.get_selected_server(),
@@ -345,7 +370,7 @@ pub(crate) fn plex_library(state: State<'_, AppState>) -> Result<String> {
     debug!("Requesting `plex_library`");
     let state = state.lock()?;
 
-    let libraries = state.settings.plex.get_libraries().unwrap_or([].into());
+    let libraries = state.settings.plex.get_libraries();
     Ok(PlexLibraryTemplate {
         libraries,
         selected: state.settings.plex.get_selected_library(),
